@@ -55,7 +55,7 @@ export function GameProvider({ children }) {
   const [board, setBoard] = useState(createEmptyBoard());
   const [selectedPieces, setSelectedPieces] = useState([]);
   const [pieces, setPieces] = useState([]);
-  const [opponentPieces, setOpponentPieces] = useState(examplePuzzle.opponentPieces);
+  const [opponentPieces, setOpponentPieces] = useState([]);
   const [playerColor, setPlayerColor] = useState('white');
   const [currentTurn, setCurrentTurn] = useState('white');
   const [preparationTimeLeft, setPreparationTimeLeft] = useState(60);
@@ -117,59 +117,92 @@ export function GameProvider({ children }) {
     };
   }, [timerActive, preparationTimeLeft, gamePhase, playerColor]);
   
-  // Start a new puzzle game
-  const startPuzzle = useCallback((puzzleData = examplePuzzle) => {
-    console.log("Starting puzzle with data:", puzzleData);
-    
-    // Reset the board
-    const newBoard = createEmptyBoard();
-    
-    // Set the player color (default to white for puzzles)
-    const color = 'white';
-    setPlayerColor(color);
-    
-    // Store opponent pieces directly in state
-    setOpponentPieces(puzzleData.opponentPieces || []);
-    
-    console.log("Setting opponent pieces:", puzzleData.opponentPieces);
-    
-    // Place opponent pieces on the board
-    puzzleData.opponentPieces.forEach(piece => {
-      const { position, type, color } = piece;
-      const pieceId = piece.id || `${type}-${position.row}-${position.col}-${color}`;
-      newBoard[position.row][position.col] = { 
-        id: pieceId, 
-        type, 
-        color, 
-        value: PIECE_VALUES[type] || 0 
-      };
-    });
-    
-    // Set up the board with opponent pieces
-    setBoard(newBoard);
-    
-    // Reset player's pieces
-    setPieces([]);
+  // Reset the game state and return to menu - define this first
+  const resetGame = useCallback(() => {
+    setBoard(createEmptyBoard());
     setSelectedPieces([]);
-    setAvailablePieces(generatePieces(color));
-    
-    // Set the current puzzle
-    setCurrentPuzzle(puzzleData);
-    
-    // Start preparation phase
-    setGamePhase(GAME_PHASES.PREPARATION);
-    setPreparationTimeLeft(60); // Reset to 60 seconds
-    setTimerActive(true);
-  }, []);
+    setPieces([]);
+    setOpponentPieces([]);
+    setAvailablePieces(generatePieces('white'));
+    setCurrentPuzzle(null);
+    setGamePhase(GAME_PHASES.MENU);
+    setPreparationTimeLeft(60);
+    setTimerActive(false);
+    setCurrentTurn('white');
+  }, [generatePieces]);
   
-  // Finish preparation and start the game
-  const finishPreparation = () => {
-    if (gamePhase === GAME_PHASES.PREPARATION) {
-      setTimerActive(false);
-      setGamePhase(GAME_PHASES.PLAYING);
-      setCurrentTurn(playerColor === 'white' ? 'white' : 'black');
+  // Start a puzzle with provided puzzle data - depends on resetGame
+  const startPuzzle = useCallback((puzzleData) => {
+    try {
+      console.log("Starting puzzle with data:", puzzleData);
+      
+      if (!puzzleData) {
+        console.warn("No puzzle data provided to startPuzzle");
+        return;
+      }
+      
+      if (!puzzleData.opponentPieces || !Array.isArray(puzzleData.opponentPieces)) {
+        console.error("Invalid puzzle data: missing or invalid opponentPieces", puzzleData);
+        return;
+      }
+      
+      // Reset the board
+      const newBoard = createEmptyBoard();
+      
+      // Set the player color (default to white for puzzles)
+      const color = 'white';
+      setPlayerColor(color);
+      
+      // Store opponent pieces directly in state
+      setOpponentPieces(puzzleData.opponentPieces || []);
+      
+      console.log("Setting opponent pieces:", puzzleData.opponentPieces);
+      
+      // Place opponent pieces on the board
+      puzzleData.opponentPieces.forEach(piece => {
+        const { position, type, color } = piece;
+        
+        // Validate position and type
+        if (!position || typeof position.row !== 'number' || typeof position.col !== 'number') {
+          console.warn("Skipping piece with invalid position", piece);
+          return;
+        }
+        
+        if (!type || !color) {
+          console.warn("Skipping piece with missing type or color", piece);
+          return;
+        }
+        
+        const pieceId = piece.id || `${type}-${position.row}-${position.col}-${color}`;
+        newBoard[position.row][position.col] = { 
+          id: pieceId, 
+          type, 
+          color, 
+          value: PIECE_VALUES[type] || 0 
+        };
+      });
+      
+      // Set up the board with opponent pieces
+      setBoard(newBoard);
+      
+      // Reset player's pieces
+      setPieces([]);
+      setSelectedPieces([]);
+      setAvailablePieces(generatePieces(color));
+      
+      // Set the current puzzle
+      setCurrentPuzzle(puzzleData);
+      
+      // Start preparation phase
+      setGamePhase(GAME_PHASES.PREPARATION);
+      setPreparationTimeLeft(60); // Reset to 60 seconds
+      setTimerActive(true);
+    } catch (error) {
+      console.error("Error in startPuzzle:", error);
+      // Reset game state to menu to avoid broken state
+      resetGame();
     }
-  };
+  }, [generatePieces, resetGame]);
   
   // Place a piece on the board
   const placePiece = (pieceId, position) => {
@@ -339,46 +372,45 @@ export function GameProvider({ children }) {
     setCurrentTurn(currentTurn === 'white' ? 'black' : 'white');
   };
   
-  // Reset the game state with a specific color
-  const resetGame = (color = playerColor) => {
-    setBoard(createEmptyBoard())
-    setSelectedPieces([])
-    setPieces([])
-    setOpponentPieces([])
-    setAvailablePieces(generatePieces(color))
-    setCurrentPuzzle(null)
-    setGamePhase(GAME_PHASES.MENU)
-    setPreparationTimeLeft(60)
-    setTimerActive(false)
-    setCurrentTurn('white')
-  }
+  // Finish preparation and start the game
+  const finishPreparation = () => {
+    if (gamePhase === GAME_PHASES.PREPARATION) {
+      setTimerActive(false);
+      setGamePhase(GAME_PHASES.PLAYING);
+      setCurrentTurn(playerColor === 'white' ? 'white' : 'black');
+    }
+  };
 
   return (
     <GameContext.Provider value={{
-      stage,
-      setStage,
-      board,
-      availablePieces,
-      selectedPieces,
-      selectedPiecesValue,
-      currentMaxValue,
-      playerColor,
-      setPlayerTurn,
-      placePiece,
-      removePiece,
-      movePiece,
-      resetGame,
+      // Game state
       gamePhase,
-      setGamePhase,
-      preparationTimeLeft,
-      timerActive,
-      setTimerActive,
-      currentTurn, 
-      startPuzzle,
-      finishPreparation,
       GAME_PHASES,
+      board,
+      selectedPieces,
       pieces,
       opponentPieces,
+      availablePieces,
+      playerColor,
+      currentTurn,
+      preparationTimeLeft,
+      timerActive,
+      currentPuzzle,
+      stage,
+      selectedPiecesValue,
+      currentMaxValue,
+      
+      // Game actions
+      placePiece,
+      movePiece,
+      startPuzzle,
+      finishPreparation,
+      resetGame,
+      setStage,
+      removePiece,
+      setGamePhase,
+      setTimerActive,
+      setPlayerTurn,
     }}>
       {children}
     </GameContext.Provider>

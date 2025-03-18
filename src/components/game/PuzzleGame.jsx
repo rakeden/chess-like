@@ -9,7 +9,30 @@ import ThreeDPieceSelection from './ThreeDPieceSelection'
 import { PlayerTurnCard } from './PlayerTurnCard'
 import { PreparationTimer } from './PreparationTimer'
 import { GamePhaseIndicator } from './GamePhaseIndicator'
+import { useDroppable } from '@dnd-kit/core'
 import stockfishUtils from '@/lib/stockfish-utils'
+
+// Droppable cell component for the overlay
+const DroppableCell = ({ row, col }) => {
+  const { setNodeRef } = useDroppable({
+    id: `cell-${row}-${col}`,
+    data: { row, col }
+  })
+
+  return (
+    <div 
+      ref={setNodeRef}
+      style={{
+        position: 'absolute',
+        width: `${100/5}%`,
+        height: `${100/5}%`,
+        top: `${(row/5) * 100}%`,
+        left: `${(col/5) * 100}%`,
+        zIndex: 10,
+      }}
+    />
+  )
+}
 
 export default function PuzzleGame({ puzzleData }) {
   const { 
@@ -55,6 +78,20 @@ export default function PuzzleGame({ puzzleData }) {
     opponentPieces: opponentPieces?.length,
     puzzleData
   });
+  
+  // Create droppable cells for the overlay
+  const droppableCells = []
+  for (let row = 0; row < 5; row++) {
+    for (let col = 0; col < 5; col++) {
+      droppableCells.push(
+        <DroppableCell 
+          key={`droppable-${row}-${col}`}
+          row={row}
+          col={col}
+        />
+      )
+    }
+  }
 
   return (
     <div className="w-full h-[calc(100vh-8rem)] relative">
@@ -99,7 +136,7 @@ export default function PuzzleGame({ puzzleData }) {
         </div>
       )}
       
-      {/* Three.js Canvas with board and piece selection */}
+      {/* Set a padding-bottom to make space for the piece selection card */}
       <div className="w-full h-full pb-24">
         <Canvas camera={{ position: [0, 5, 5], fov: 50 }}>
           <OrbitControls
@@ -116,6 +153,13 @@ export default function PuzzleGame({ puzzleData }) {
           {/* Add the 3D piece selection component during preparation phase */}
           {gamePhase === GAME_PHASES.PREPARATION && <ThreeDPieceSelection />}
         </Canvas>
+        
+        {/* Overlay for dnd-kit droppable areas */}
+        <div className="absolute top-0 left-0 w-full h-full pointer-events-none">
+          <div className="relative w-full h-full pointer-events-auto">
+            {droppableCells}
+          </div>
+        </div>
       </div>
     </div>
   );

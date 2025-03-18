@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip"
 import Layout from '@/components/layout/Layout'
 import PuzzleGame from '@/components/game/PuzzleGame'
 import PuzzleSelection from '@/components/game/PuzzleSelection'
+import { DndContext } from '@dnd-kit/core'
 import { getRandomPuzzle } from '@/lib/puzzles'
 
 function GameContent() {
@@ -66,11 +67,13 @@ function GameContent() {
 export default function App() {
   return (
     <GameProvider>
-      <TooltipProvider>
-        <Layout>
-          <GameContent />
-        </Layout>
-      </TooltipProvider>
+      <DndContext>
+        <TooltipProvider>
+          <Layout>
+            <GameContent />
+          </Layout>
+        </TooltipProvider>
+      </DndContext>
     </GameProvider>
   )
 }

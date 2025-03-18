@@ -319,3 +319,99 @@ I need a rework of the game logic to include a preparation phase where the playe
 - Implemented automatic game phase transitions with useEffect hooks
 - Created responsive UI components using shadcn/ui
 - Maintained separation between 3D rendering (Three.js) and UI elements
+
+## Three.js Piece Selection Implementation
+
+### User Request
+Implement piece selection using three.js for both the selection area below the board and on the board scene itself.
+
+### Actions Taken
+1. Created a new Three.js based piece selection component:
+   - Implemented `ThreeDPieceSelection.jsx` component
+   - Rendered 3D chess pieces below the chess board
+   - Added interaction capabilities with raycasting
+   - Implemented dragging functionality for piece placement
+2. Enhanced board interactions:
+   - Added userData to board cells for raycasting identification
+   - Implemented visual feedback for valid drop zones
+   - Added hover effects for cells during preparation phase
+3. Improved game flow:
+   - Updated game context to properly handle 3D interactions
+   - Implemented proper state transitions between menu, preparation, and gameplay
+   - Enhanced the visual feedback system
+4. Created utility functions for better piece management:
+   - Added coordinate conversion utilities
+   - Implemented proper piece positioning
+   - Enhanced the visual representation of pieces
+
+### Next Steps
+- Improve the piece movement animations
+- Add game rules validation
+- Implement AI opponent moves
+- Create additional puzzles with varying difficulties
+- Add sound effects and visual feedback
+
+## Puzzle System and Chess Engine Integration
+
+### User Request
+Move the puzzle game into a separate component and add pre-generated puzzles with random positions to solve against. Use a notation that works with chess engines like Stockfish.
+
+### Actions Taken
+1. Created a separate puzzle game component:
+   - Implemented `PuzzleGame.jsx` to encapsulate the puzzle gameplay
+   - Created `PuzzleSelection.jsx` for choosing different puzzles
+   - Refactored the application to use these components
+2. Added pre-generated puzzles:
+   - Created a `puzzles.js` file with various puzzle positions
+   - Implemented algebraic notation for piece positions
+   - Added difficulty ratings and piece constraints
+3. Implemented FEN notation support:
+   - Added Forsyth-Edwards Notation (FEN) for each puzzle
+   - Created conversion utilities between board state and FEN
+   - Implemented real-time FEN display during preparation
+4. Added Stockfish integration utilities:
+   - Created `stockfish-utils.js` with UCI command generators
+   - Added copy-to-clipboard functionality for position commands
+   - Implemented position sharing capabilities
+5. Enhanced the UI:
+   - Added detailed puzzle cards with difficulty indicators
+   - Implemented tooltips for puzzle information
+   - Added position copying and analysis commands
+
+### Next Steps
+- Implement puzzle validation and scoring
+- Create more diverse puzzle scenarios
+- Add real-time engine analysis integration
+- Implement puzzle completion tracking
+- Add puzzle rating system
+
+## Dependency and Component Cleanup
+
+### User Request
+Remove the old PieceSelection.jsx component as it's been replaced by ThreeDPieceSelection.
+
+### Actions Taken
+1. Component removal:
+   - Removed the import of PieceSelection from PuzzleGame.jsx
+   - Deleted the PieceSelection.jsx file from the codebase
+   - Updated all references to use only ThreeDPieceSelection
+2. Dependency management:
+   - Added required Radix UI tooltip dependency
+   - Created Tooltip component implementation
+   - Ensured proper setup of TooltipProvider in App.jsx
+3. Code cleanup:
+   - Removed unnecessary code related to 2D piece selection
+   - Consolidated the piece selection into a single Three.js implementation
+   - Ensured all components are properly integrated
+
+### Tech Details
+- Maintained the three.js implementation for all piece interactions
+- Ensured the application uses a consistent approach to piece selection
+- Updated the component hierarchy to reflect the new structure
+- Maintained compatibility with the existing game context
+
+### Next Steps
+- Further enhance the Three.js piece selection with improved visuals
+- Fine-tune the drag-and-drop experience
+- Add additional feedback during piece placement
+- Implement piece movement rules in the playing phase

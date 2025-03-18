@@ -273,3 +273,49 @@ Display the player's turn (white/black) prominently and only show pieces of the 
 - Create piece movement validation
 - Implement win/loss detection
 - Add visual feedback for legal moves
+
+## Preparation Phase Implementation
+
+### User Request:
+I need a rework of the game logic to include a preparation phase where the player can place their pieces. In puzzle scenarios, the opponent's position should be predefined. The preparation phase should have a 60-second timer, after which the actual game starts. All piece-related interactions should be handled in Three.js, while other UI elements like turn indicators and timers can remain as shadcn cards.
+
+### Actions Taken:
+
+1. **Game Phase Structure:**
+   - Implemented a clear game phase system with four states: MENU, PREPARATION, PLAYING, and GAME_OVER
+   - Created a countdown timer for the preparation phase (60 seconds)
+   - Added automatic transition from preparation to playing phase when time expires
+
+2. **Preparation Timer Component:**
+   - Created a new `PreparationTimer` component to display the countdown
+   - Added visual feedback with color changes as time decreases
+   - Included a "Ready" button to manually complete preparation early
+
+3. **Game Context Updates:**
+   - Added support for predefined opponent pieces in puzzles
+   - Implemented phase-specific piece placement logic
+   - Added opponent piece generation with appropriate positions and colors
+
+4. **Board Component Enhancements:**
+   - Updated to display both player and opponent pieces based on game phase
+   - Implemented board rotation based on player color (white/black)
+   - Added visual distinctions between player and opponent pieces
+
+5. **UI Flow Improvements:**
+   - Modified the game layout to show/hide components based on game phase
+   - Added game phase-specific instructions and feedback
+   - Improved the piece selection to only be available during preparation
+
+### Next Steps:
+- Implement piece movement logic for the playing phase
+- Add rules for piece capturing and interactions
+- Create victory/defeat conditions
+- Implement opponent AI for automatic moves
+- Add visual effects for piece movements and captures
+- Create additional puzzles with varying difficulty levels
+
+### Tech Details:
+- Used React's Context API for game state management across components
+- Implemented automatic game phase transitions with useEffect hooks
+- Created responsive UI components using shadcn/ui
+- Maintained separation between 3D rendering (Three.js) and UI elements

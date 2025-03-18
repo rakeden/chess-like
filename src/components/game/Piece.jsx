@@ -59,12 +59,22 @@ const createPieceGeometry = (type) => {
   }
 };
 
-export default function Piece({ type, color, position }) {
+export default function Piece({ 
+  type = 'pawn', 
+  color = 'white', 
+  position = [0, 0, 0], 
+  scale = [1, 1, 1], 
+  visible = true,
+  value
+}) {
   const meshRef = useRef();
   const hoverRef = useRef(false);
   
+  // Skip rendering if not visible
+  if (!visible) return null;
+  
   // Create the piece geometry based on type
-  const geometry = useMemo(() => createPieceGeometry(type), [type]);
+  const geometry = useMemo(() => createPieceGeometry(type || 'pawn'), [type]);
   
   // Define the material color
   const material = useMemo(() => {
@@ -105,10 +115,16 @@ export default function Piece({ type, color, position }) {
     hoverRef.current = false;
     document.body.style.cursor = 'auto';
   };
+
+  // Ensure position is an array with 3 values
+  const safePosition = Array.isArray(position) && position.length >= 3 
+    ? position 
+    : [0, 0, 0];
   
   return (
     <group
-      position={[position[0], position[1], position[2]]}
+      position={safePosition}
+      scale={scale}
       ref={meshRef}
       onPointerOver={handlePointerOver}
       onPointerOut={handlePointerOut}

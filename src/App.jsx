@@ -1,15 +1,18 @@
-import { useState } from 'react'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
+import { useState, useRef, useEffect } from 'react'
+import { Canvas } from '@react-three/fiber'
+import { OrbitControls } from '@react-three/drei'
 import { Button } from "@/components/ui/button"
-import { Layout } from '@/components/layout/Layout'
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { GameProvider, useGameContext, GAME_PHASES } from '@/lib/game-context'
-import { DndContext } from '@dnd-kit/core'
-import { Board } from '@/components/game/Board'
+import Layout from '@/components/layout/Layout'
+import Board from '@/components/game/Board'
 import { PieceSelection } from '@/components/game/PieceSelection'
 import { PlayerTurnCard } from '@/components/game/PlayerTurnCard'
 import { PreparationTimer } from '@/components/game/PreparationTimer'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog"
-import { Toaster } from 'sonner'
+import { GamePhaseIndicator } from '@/components/game/GamePhaseIndicator'
+import { DndContext } from '@dnd-kit/core'
+import { useDroppable } from '@dnd-kit/core'
 
 // Droppable cell component for the overlay
 const DroppableCell = ({ row, col }) => {
@@ -33,198 +36,180 @@ const DroppableCell = ({ row, col }) => {
   )
 }
 
-// The Game component that manages the actual game
-function Game() {
+function GameContent() {
   const { 
     gamePhase, 
+    GAME_PHASES, 
+    startPuzzle, 
     playerColor,
-    selectedPieces,
-    addPiece
+    currentTurn,
+    pieces,
+    opponentPieces
   } = useGameContext();
   
-  // Handle piece drop onto the board
-  const handleDragEnd = (event) => {
-    const { active, over } = event;
-    
-    // If not dropped on a droppable, do nothing
-    if (!active || !over) return;
-    
-    // Add piece to the board at the dropped position
-    const piece = active.data.current.piece;
-    addPiece(over.id, piece);
-  };
+  // Debug logging
+  console.log("GameContent rendering:", {
+    gamePhase,
+    playerColor,
+    currentTurn,
+    pieces: pieces?.length,
+    opponentPieces: opponentPieces?.length
+  });
   
-  // Determine which row player can place pieces in during preparation
-  const getDroppableCells = () => {
-    if (gamePhase !== GAME_PHASES.PREPARATION) return [];
-    
-    // In preparation phase, player can only place on their side
-    const playerRowsStart = playerColor === 'white' ? 3 : 0;
-    const playerRowsEnd = playerColor === 'white' ? 4 : 1;
-    
-    const droppableCells = [];
-    for (let i = 0; i < 5; i++) {
-      for (let j = playerRowsStart; j <= playerRowsEnd; j++) {
-        const cellId = String.fromCharCode(97 + i) + (5 - j);
-        
-        // Only add if cell is not already occupied
-        if (!selectedPieces[cellId]) {
-          droppableCells.push(cellId);
-        }
-      }
+  // Create droppable cells for the overlay
+  const droppableCells = []
+  for (let row = 0; row < 5; row++) {
+    for (let col = 0; col < 5; col++) {
+      droppableCells.push(
+        <DroppableCell 
+          key={`droppable-${row}-${col}`}
+          row={row}
+          col={col}
+        />
+      )
     }
-    
-    return droppableCells;
-  };
-  
-  return (
-    <DndContext onDragEnd={handleDragEnd}>
-      <div className="relative h-[calc(100vh-8rem)] flex flex-col items-center justify-center">
-        {/* Player turn indicator */}
-        <PlayerTurnCard />
-        
-        {/* Preparation timer - only shown during preparation phase */}
-        {gamePhase === GAME_PHASES.PREPARATION && <PreparationTimer />}
-        
-        {/* Game board */}
-        <div className="flex flex-col md:flex-row gap-4 items-center justify-center w-full">
-          <div className="order-2 md:order-1 flex-1 flex justify-center">
-            <Board droppableCells={getDroppableCells()} />
-          </div>
-          
-          {/* Piece selection - only shown during preparation phase */}
-          {gamePhase === GAME_PHASES.PREPARATION && (
-            <div className="order-1 md:order-2">
-              <PieceSelection />
-            </div>
-          )}
-        </div>
-      </div>
-    </DndContext>
-  );
-}
+  }
 
-// The menu component displayed before starting the game
-function Menu() {
-  const { startNewGame } = useGameContext();
-  const [showRules, setShowRules] = useState(false);
-  
-  return (
-    <div className="min-h-[calc(100vh-8rem)] flex items-center justify-center px-4">
-      <Card className="w-full max-w-lg mx-4 shadow-lg">
-        <CardHeader>
-          <CardTitle className="text-3xl font-bold text-center">Chessy</CardTitle>
-          <CardDescription className="text-center">
-            A simplified chess-like game with customizable pieces
-          </CardDescription>
-        </CardHeader>
-        
-        <CardContent className="space-y-4">
-          <div className="flex flex-col space-y-2">
-            <Button 
-              size="lg" 
-              className="w-full" 
-              onClick={() => startNewGame()}
-            >
-              Play Game
-            </Button>
-            
-            <Button 
-              size="lg" 
-              className="w-full" 
-              variant="outline"
-              onClick={() => startNewGame(true)}
-            >
-              Puzzle Mode
-            </Button>
-            
-            <Dialog open={showRules} onOpenChange={setShowRules}>
-              <DialogTrigger asChild>
-                <Button size="lg" className="w-full" variant="secondary">
-                  How to Play
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
-                <DialogHeader>
-                  <DialogTitle className="text-xl font-bold">Game Rules</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4 py-4">
-                  <section>
-                    <h3 className="font-semibold text-lg">Preparation Phase</h3>
-                    <p className="text-muted-foreground">
-                      You have 3 minutes to place your pieces on the board. Each piece has a point value:
-                    </p>
-                    <ul className="list-disc list-inside mt-2 space-y-1">
-                      <li>Pawn: 1 point</li>
-                      <li>Knight: 3 points</li>
-                      <li>Bishop: 3 points</li>
-                      <li>Rook: 5 points</li>
-                      <li>Queen: 9 points</li>
-                      <li>King: 4 points (required)</li>
-                    </ul>
-                    <p className="mt-2">
-                      You must place pieces worth no more than 39 points and must include a King.
-                    </p>
-                  </section>
-                  <section>
-                    <h3 className="font-semibold text-lg">Movement Rules</h3>
-                    <p className="text-muted-foreground">
-                      Pieces move according to standard chess rules:
-                    </p>
-                    <ul className="list-disc list-inside mt-2 space-y-1">
-                      <li>King: One square in any direction</li>
-                      <li>Queen: Any number of squares diagonally, horizontally, or vertically</li>
-                      <li>Rook: Any number of squares horizontally or vertically</li>
-                      <li>Bishop: Any number of squares diagonally</li>
-                      <li>Knight: L-shape (2 squares in one direction, then 1 square perpendicular)</li>
-                      <li>Pawn: One square forward, captures diagonally</li>
-                    </ul>
-                  </section>
-                  <section>
-                    <h3 className="font-semibold text-lg">Winning the Game</h3>
-                    <p className="text-muted-foreground">
-                      Capture your opponent's King to win the game!
-                    </p>
-                  </section>
-                </div>
-                <DialogFooter>
-                  <Button onClick={() => setShowRules(false)}>Close</Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-          </div>
-        </CardContent>
-        
-        <CardFooter className="flex justify-center text-sm text-muted-foreground">
-          Move pieces by dragging and dropping. Capture opponent pieces by moving onto their square.
-        </CardFooter>
-      </Card>
-    </div>
-  );
-}
-
-// Component to render either the menu or the game based on the current phase
-function GameContent() {
-  const { gamePhase } = useGameContext();
+  // Determine what to render based on game phase
+  let content;
   
   switch (gamePhase) {
-    case GAME_PHASES.PLAYING:
     case GAME_PHASES.PREPARATION:
-      return <Game />;
-    case GAME_PHASES.MENU:
-    default:
-      return <Menu />;
+    case GAME_PHASES.PLAYING:
+      content = (
+        <div className="w-full h-[calc(100vh-8rem)] relative">
+          {/* Display player's turn if in playing phase, otherwise preparation timer */}
+          {gamePhase === GAME_PHASES.PLAYING ? (
+            <PlayerTurnCard />
+          ) : (
+            <PreparationTimer />
+          )}
+          
+          {/* Game phase indicator */}
+          <GamePhaseIndicator />
+          
+          {/* Show a game status message */}
+          {gamePhase === GAME_PHASES.PLAYING && currentTurn !== playerColor && (
+            <div className="absolute top-20 left-4 z-10 bg-black/50 text-white px-4 py-2 rounded-md">
+              Opponent's turn
+            </div>
+          )}
+          
+          {/* Set a padding-bottom to make space for the piece selection card */}
+          <div className="w-full h-full pb-24">
+            <Canvas camera={{ position: [0, 5, 5], fov: 50 }}>
+              <OrbitControls
+                enablePan={false}
+                minPolarAngle={Math.PI / 4}
+                maxPolarAngle={Math.PI / 2}
+                minDistance={5}
+                maxDistance={10}
+              />
+              <ambientLight intensity={0.6} />
+              <directionalLight position={[5, 10, 5]} intensity={0.8} castShadow />
+              <Board />
+            </Canvas>
+            
+            {/* Overlay for dnd-kit droppable areas */}
+            <div className="absolute top-0 left-0 w-full h-full pointer-events-none">
+              <div className="relative w-full h-full pointer-events-auto">
+                {droppableCells}
+              </div>
+            </div>
+          </div>
+          
+          {/* Only show piece selection during preparation phase */}
+          {gamePhase === GAME_PHASES.PREPARATION && <PieceSelection />}
+        </div>
+      );
+      break;
+      
+    case GAME_PHASES.GAME_OVER:
+      content = (
+        <div className="flex items-center justify-center min-h-[calc(100vh-8rem)]">
+          <Card className="w-[350px] mx-4">
+            <CardHeader>
+              <CardTitle>Game Over</CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-4">
+              <p>The game has ended.</p>
+              <Button 
+                size="lg" 
+                className="w-full"
+                onClick={() => startPuzzle()}
+              >
+                Play Again
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      );
+      break;
+      
+    default: // MENU phase
+      content = <Menu />;
   }
+  
+  return content;
 }
 
-// Main App component
+function Menu() {
+  const { startPuzzle } = useGameContext();
+  
+  console.log("Menu component rendered, startPuzzle function:", startPuzzle);
+  
+  return (
+    <div className="flex items-center justify-center min-h-[calc(100vh-8rem)]">
+      <Card className="w-[350px] mx-4">
+        <CardHeader>
+          <CardTitle>Welcome to Chess-like</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          <Button 
+            size="lg" 
+            className="w-full"
+            onClick={() => {
+              console.log("Start Puzzle button clicked");
+              startPuzzle();
+            }}
+          >
+            Start Puzzle
+          </Button>
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button variant="outline" size="lg" className="w-full">
+                How to Play
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Game Rules</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <p>Chess-like is a roguelike autobattler based on chess mechanics:</p>
+                <ul className="list-disc pl-4 space-y-2">
+                  <li>Play on a 5x5 chessboard</li>
+                  <li>You have 60 seconds to place your pieces</li>
+                  <li>Select pieces within value constraints</li>
+                  <li>Battle against AI-controlled pieces</li>
+                </ul>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+
 export default function App() {
   return (
     <GameProvider>
-      <Layout>
-        <GameContent />
-        <Toaster position="top-center" />
-      </Layout>
+      <DndContext>
+        <Layout>
+          <GameContent />
+        </Layout>
+      </DndContext>
     </GameProvider>
   )
 }

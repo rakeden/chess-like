@@ -1,141 +1,138 @@
-import { useMemo } from 'react'
-import { useDroppable } from '@dnd-kit/core'
-import { useGameContext, GAME_PHASES } from '@/lib/game-context'
-import { getCellBackgroundColor, getPieceSymbol, coordsToCellId } from '@/lib/piece-utils'
+import { useRef, useEffect, useMemo } from 'react'
+import { useFrame } from '@react-three/fiber'
+import { useGameContext } from '@/lib/game-context'
+import * as THREE from 'three'
+import Piece from './Piece'
 
-// Individual cell component that can receive dropped pieces
-function BoardCell({ row, col, isDroppable, onClick, children }) {
-  const cellId = coordsToCellId(row, col)
-  const { isOver, setNodeRef } = useDroppable({
-    id: cellId,
-    disabled: !isDroppable
-  })
-  
-  const backgroundColor = getCellBackgroundColor(row, col)
-  const coordinates = `${String.fromCharCode(97 + col)}${5 - row}`
-  
+const BOARD_SIZE = 5
+const SQUARE_SIZE = 1
+const BOARD_OFFSET = (BOARD_SIZE * SQUARE_SIZE) / 2 - SQUARE_SIZE / 2
+
+function Square({ position, color }) {
   return (
-    <div
-      ref={setNodeRef}
-      className={`
-        relative w-full h-full flex items-center justify-center
-        ${backgroundColor}
-        ${isDroppable ? 'cursor-pointer' : ''}
-        ${isOver && isDroppable ? 'ring-2 ring-primary ring-inset' : ''}
-      `}
-      data-cell-id={cellId}
-      onClick={onClick}
-    >
-      {children}
+    <mesh position={position}>
+      <boxGeometry args={[SQUARE_SIZE, 0.1, SQUARE_SIZE]} />
+      <meshStandardMaterial color={color} />
+    </mesh>
+  )
+}
+
+export default function Board() {
+  // Get data from context
+  const context = useGameContext();
+  
+  // Create a safe context with fallbacks
+  const safeContext = {
+    pieces: Array.isArray(context?.pieces) ? context.pieces : [],
+    playerColor: context?.playerColor || 'white',
+    opponentPieces: Array.isArray(context?.opponentPieces) ? context.opponentPieces : [],
+    gamePhase: context?.gamePhase || 'menu',
+    GAME_PHASES: context?.GAME_PHASES || {
+      MENU: 'menu',
+      PREPARATION: 'preparation',
+      PLAYING: 'playing',
+      GAME_OVER: 'gameOver'
+    }
+  };
+  
+  const { pieces, playerColor, opponentPieces, gamePhase, GAME_PHASES } = safeContext;
+  
+  // Debug the values we're using
+  console.log("Board using:", {
+    piecesLength: pieces.length,
+    opponentPiecesLength: opponentPieces.length,
+    playerColor,
+    gamePhase
+  });
+  
+  const boardRef = useRef();
+
+  // Rotate board if player is black
+  useEffect(() => {
+    if (boardRef.current) {
+      if (playerColor === 'black') {
+        boardRef.current.rotation.y = Math.PI;
+      } else {
+        boardRef.current.rotation.y = 0;
+      }
+    }
+  }, [playerColor]);
+
+  // Gentle floating animation 
+  useFrame(({ clock }) => {
+    if (boardRef.current) {
+      boardRef.current.position.y = Math.sin(clock.getElapsedTime() * 0.5) * 0.05;
+    }
+  });
+
+  // Determine which pieces to render based on game phase
+  const piecesToRender = useMemo(() => {
+    try {
+      // Start with player pieces
+      let visiblePieces = pieces.map(piece => ({
+        ...piece,
+        color: playerColor
+      }));
       
-      {/* Coordinates label */}
-      <span className="absolute bottom-0.5 right-1 text-[0.5rem] text-muted-foreground opacity-50">
-        {coordinates}
-      </span>
-    </div>
-  )
-}
-
-// Piece component to display on the board
-function Piece({ piece, onClick }) {
-  const { playerColor, gamePhase } = useGameContext()
-  
-  // Determine if this piece is draggable (player's own piece during preparation)
-  const isDraggable = gamePhase === GAME_PHASES.PREPARATION && 
-                     piece.color === playerColor
-  
-  return (
-    <div
-      className={`
-        w-4/5 h-4/5 rounded-full flex items-center justify-center text-3xl
-        ${piece.color === 'white' ? 'bg-white text-black' : 'bg-black text-white'}
-        ${isDraggable ? 'cursor-grab active:cursor-grabbing' : ''}
-        transition-transform hover:scale-105
-      `}
-      onClick={onClick}
-    >
-      {getPieceSymbol(piece.type, piece.color)}
-    </div>
-  )
-}
-
-export function Board({ droppableCells = [] }) {
-  const { 
-    playerColor, 
-    gamePhase,
-    selectedPieces,
-    addPiece,
-    removePiece
-  } = useGameContext()
-  
-  // Create a 5x5 grid 
-  const boardSize = 5
-  const grid = useMemo(() => {
-    const cells = []
-    for (let i = 0; i < boardSize; i++) {
-      const row = []
-      for (let j = 0; j < boardSize; j++) {
-        row.push(coordsToCellId(i, j))
+      // Add opponent pieces if in playing or game over phase
+      if (gamePhase === GAME_PHASES.PLAYING || gamePhase === GAME_PHASES.GAME_OVER) {
+        const visibleOpponentPieces = opponentPieces.map(piece => ({
+          ...piece,
+          color: playerColor === 'white' ? 'black' : 'white'
+        }));
+        
+        visiblePieces = [...visiblePieces, ...visibleOpponentPieces];
       }
-      cells.push(row)
+      
+      return visiblePieces;
+    } catch (error) {
+      console.error("Error preparing pieces to render:", error);
+      return [];
     }
-    return cells
-  }, [])
-  
-  // Convert droppableCells array to a Set for faster lookup
-  const droppableCellsSet = useMemo(() => {
-    return new Set(droppableCells)
-  }, [droppableCells])
-  
-  // Handle clicking on a piece to remove it
-  const handlePieceClick = (e, cellId) => {
-    e.stopPropagation()
-    
-    if (gamePhase === GAME_PHASES.PREPARATION) {
-      // Only allow removing player's own pieces during preparation
-      const piece = selectedPieces[cellId]
-      if (piece && piece.color === playerColor) {
-        removePiece(cellId)
-      }
-    }
-  }
-  
-  // Handle clicking on an empty cell during preparation
-  const handleEmptyCellClick = (cellId) => {
-    if (gamePhase === GAME_PHASES.PREPARATION && droppableCellsSet.has(cellId)) {
-      // For now, we'll just show an alert - in a real implementation,
-      // this would open a piece selection dialog
-      alert(`Click on a piece in the piece selection panel and drag it to cell ${cellId}`)
-    }
-  }
-  
+  }, [pieces, opponentPieces, playerColor, gamePhase, GAME_PHASES]);
+
   return (
-    <div className="w-full h-full aspect-square max-w-lg mx-auto rounded-md overflow-hidden border">
-      <div className="grid grid-cols-5 grid-rows-5 w-full h-full">
-        {grid.map((row, rowIndex) => (
-          row.map((cellId, colIndex) => {
-            const piece = selectedPieces[cellId]
-            const isDroppable = droppableCellsSet.has(cellId)
-            
-            return (
-              <BoardCell 
-                key={cellId} 
-                row={rowIndex} 
-                col={colIndex}
-                isDroppable={isDroppable}
-                onClick={() => !piece && handleEmptyCellClick(cellId)}
-              >
-                {piece && (
-                  <Piece 
-                    piece={piece} 
-                    onClick={(e) => handlePieceClick(e, cellId)}
-                  />
-                )}
-              </BoardCell>
-            )
-          })
-        ))}
-      </div>
-    </div>
-  )
+    <group ref={boardRef}>
+      {/* Board base */}
+      <mesh position={[0, -0.1, 0]} receiveShadow>
+        <boxGeometry args={[5.2, 0.2, 5.2]} />
+        <meshStandardMaterial color="#8B4513" />
+      </mesh>
+
+      {/* Board cells */}
+      {Array.from({ length: 5 }).map((_, row) =>
+        Array.from({ length: 5 }).map((_, col) => {
+          const isLight = (row + col) % 2 === 0;
+          const position = [col - 2, 0, row - 2];
+          return (
+            <mesh key={`${row}-${col}`} position={position} receiveShadow>
+              <boxGeometry args={[1, 0.1, 1]} />
+              <meshStandardMaterial color={isLight ? '#f0d9b5' : '#b58863'} />
+            </mesh>
+          );
+        })
+      )}
+
+      {/* Render pieces - use a conditional to ensure piecesToRender is an array */}
+      {Array.isArray(piecesToRender) && piecesToRender.map((piece, index) => {
+        if (!piece) return null;
+        
+        return (
+          <Piece
+            key={`${piece.id || index}-${piece.position ? `${piece.position.row}-${piece.position.col}` : 'hand'}`}
+            type={piece.type || 'pawn'}
+            color={piece.color || 'white'}
+            value={piece.value || 0}
+            position={
+              piece.position 
+                ? [piece.position.col - 2, 0.6, piece.position.row - 2] 
+                : [0, 0, 0]
+            }
+            scale={[0.8, 0.8, 0.8]}
+            visible={!!piece.position}
+          />
+        );
+      })}
+    </group>
+  );
 } 

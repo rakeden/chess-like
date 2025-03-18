@@ -241,3 +241,35 @@ Rework the piece selection UI to use a card at the bottom of the screen with com
 - Implement piece movement rules
 - Create opponent AI for gameplay
 - Add game state management for wins/losses
+
+## Player Turn Display and Color-Based Piece Selection
+
+### User Request
+Display the player's turn (white/black) prominently and only show pieces of the player's color.
+
+### Actions Taken
+1. Enhanced the game context:
+   - Added `playerColor` state to track which color the player controls
+   - Created `setPlayerTurn` function to switch colors and reset pieces
+   - Updated piece generation to be color-specific
+   - Added IDs with color information for better tracking
+2. Created a prominent player turn display:
+   - Implemented `PlayerTurnCard` component at the top of the game
+   - Added visual indicators for white/black pieces (king symbol)
+   - Included a color bar for quick visual reference
+   - Added a toggle button for testing different colors
+3. Updated piece selection to be color-specific:
+   - Filtered available pieces to only show the player's color
+   - Updated piece symbols to match the correct color (♔ for white, ♚ for black)
+   - Enhanced the 3D piece models with better color differentiation
+4. Implemented random color assignment:
+   - Added logic to randomly assign white or black to the player at game start
+   - Created initialization in a useEffect hook
+   - Ensured the board resets properly when color changes
+
+### Next Steps
+- Implement opponent's pieces placement
+- Add turn-based gameplay mechanics
+- Create piece movement validation
+- Implement win/loss detection
+- Add visual feedback for legal moves

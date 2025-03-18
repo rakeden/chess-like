@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
 import { Button } from "@/components/ui/button"
@@ -8,6 +8,7 @@ import { GameProvider } from '@/lib/game-context'
 import Layout from '@/components/layout/Layout'
 import Board from '@/components/game/Board'
 import { PieceSelection } from '@/components/game/PieceSelection'
+import { PlayerTurnCard } from '@/components/game/PlayerTurnCard'
 import { DndContext } from '@dnd-kit/core'
 import { useGameContext } from '@/lib/game-context'
 import { useDroppable } from '@dnd-kit/core'
@@ -35,6 +36,15 @@ const DroppableCell = ({ row, col }) => {
 }
 
 function Game() {
+  const { setPlayerTurn } = useGameContext();
+  
+  // Randomly assign player's color at the start of the game
+  useEffect(() => {
+    // 50% chance to be white or black
+    const randomColor = Math.random() < 0.5 ? 'white' : 'black';
+    setPlayerTurn(randomColor);
+  }, [setPlayerTurn]);
+  
   // Create droppable cells for the overlay
   const droppableCells = []
   for (let row = 0; row < 5; row++) {
@@ -51,6 +61,9 @@ function Game() {
 
   return (
     <div className="w-full h-[calc(100vh-8rem)] relative">
+      {/* Display player's turn */}
+      <PlayerTurnCard />
+      
       {/* Set a padding-bottom to make space for the piece selection card */}
       <div className="w-full h-full pb-24">
         <Canvas camera={{ position: [0, 5, 5], fov: 50 }}>

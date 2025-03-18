@@ -68,10 +68,15 @@ export default function Piece({ type, color, position }) {
   
   // Define the material color
   const material = useMemo(() => {
+    // More visually distinct colors for black and white pieces
+    const materialColor = color === 'white' ? 0xf0f0f0 : 0x202020;
+    const materialEmissive = color === 'white' ? 0x404040 : 0x101010;
+    
     return new THREE.MeshStandardMaterial({
-      color: color === 'white' ? 0xf5f5f5 : 0x212121,
-      metalness: 0.1,
-      roughness: 0.5,
+      color: materialColor,
+      emissive: materialEmissive,
+      metalness: color === 'white' ? 0.1 : 0.3,
+      roughness: color === 'white' ? 0.5 : 0.7,
     });
   }, [color]);
   
@@ -118,9 +123,10 @@ export default function Piece({ type, color, position }) {
           >
             <primitive object={child.geometry} attach="geometry" />
             <meshStandardMaterial
-              color={color === 'white' ? 0xf5f5f5 : 0x212121}
-              metalness={0.1}
-              roughness={0.5}
+              color={color === 'white' ? 0xf0f0f0 : 0x202020}
+              emissive={color === 'white' ? 0x404040 : 0x101010}
+              metalness={color === 'white' ? 0.1 : 0.3}
+              roughness={color === 'white' ? 0.5 : 0.7}
             />
           </mesh>
         ))

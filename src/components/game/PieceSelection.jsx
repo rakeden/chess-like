@@ -41,15 +41,15 @@ const DraggablePiece = ({ piece }) => {
       {...attributes}
       className="bg-card border hover:bg-accent p-3 rounded-lg inline-flex flex-col items-center justify-center w-12 h-16 m-1"
     >
-      <span className="text-2xl mb-1">{getPieceSymbol(piece.type)}</span>
+      <span className="text-2xl mb-1">{getPieceSymbol(piece.type, piece.color)}</span>
       <span className="text-xs">{piece.value}</span>
     </div>
   );
 };
 
-// Utility function to get chess piece symbol
-function getPieceSymbol(type) {
-  const symbols = {
+// Utility function to get chess piece symbol for the correct color
+function getPieceSymbol(type, color) {
+  const whiteSymbols = {
     king: '♔',
     queen: '♕',
     rook: '♖',
@@ -57,7 +57,17 @@ function getPieceSymbol(type) {
     knight: '♘',
     pawn: '♙'
   };
-  return symbols[type] || '?';
+  
+  const blackSymbols = {
+    king: '♚',
+    queen: '♛',
+    rook: '♜',
+    bishop: '♝',
+    knight: '♞',
+    pawn: '♟'
+  };
+  
+  return color === 'white' ? whiteSymbols[type] || '?' : blackSymbols[type] || '?';
 }
 
 export function PieceSelection() {
@@ -66,6 +76,7 @@ export function PieceSelection() {
     selectedPieces,
     selectedPiecesValue,
     currentMaxValue,
+    playerColor,
     placePiece
   } = useGameContext();
 
@@ -77,6 +88,9 @@ export function PieceSelection() {
   // Group available pieces by type for display
   const groupedPieces = useMemo(() => {
     return availablePieces.reduce((grouped, piece) => {
+      // Only include pieces of the player's color
+      if (piece.color !== playerColor) return grouped;
+      
       const type = piece.type;
       if (!grouped[type]) {
         grouped[type] = [];
@@ -84,7 +98,7 @@ export function PieceSelection() {
       grouped[type].push(piece);
       return grouped;
     }, {});
-  }, [availablePieces]);
+  }, [availablePieces, playerColor]);
 
   // Configure drag and drop sensors
   const sensors = useSensors(
@@ -159,7 +173,7 @@ export function PieceSelection() {
                     key={piece.id} 
                     className="bg-accent/30 p-2 rounded-md inline-flex flex-col items-center justify-center w-10 h-14 m-1"
                   >
-                    <span className="text-xl">{getPieceSymbol(piece.type)}</span>
+                    <span className="text-xl">{getPieceSymbol(piece.type, piece.color)}</span>
                     <span className="text-xs">{piece.value}</span>
                   </div>
                 ))}

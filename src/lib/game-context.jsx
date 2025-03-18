@@ -28,21 +28,27 @@ export function GameProvider({ children }) {
   const [stage, setStage] = useState(1)
   const [board, setBoard] = useState(createEmptyBoard())
   const [selectedPieces, setSelectedPieces] = useState([])
-  const [availablePieces, setAvailablePieces] = useState([
-    { id: 'king-1', type: 'king', color: 'white', value: PIECE_VALUES.king },
-    { id: 'queen-1', type: 'queen', color: 'white', value: PIECE_VALUES.queen },
-    { id: 'rook-1', type: 'rook', color: 'white', value: PIECE_VALUES.rook },
-    { id: 'rook-2', type: 'rook', color: 'white', value: PIECE_VALUES.rook },
-    { id: 'bishop-1', type: 'bishop', color: 'white', value: PIECE_VALUES.bishop },
-    { id: 'bishop-2', type: 'bishop', color: 'white', value: PIECE_VALUES.bishop },
-    { id: 'knight-1', type: 'knight', color: 'white', value: PIECE_VALUES.knight },
-    { id: 'knight-2', type: 'knight', color: 'white', value: PIECE_VALUES.knight },
-    { id: 'pawn-1', type: 'pawn', color: 'white', value: PIECE_VALUES.pawn },
-    { id: 'pawn-2', type: 'pawn', color: 'white', value: PIECE_VALUES.pawn },
-    { id: 'pawn-3', type: 'pawn', color: 'white', value: PIECE_VALUES.pawn },
-    { id: 'pawn-4', type: 'pawn', color: 'white', value: PIECE_VALUES.pawn },
-    { id: 'pawn-5', type: 'pawn', color: 'white', value: PIECE_VALUES.pawn },
-  ])
+  // Default to white pieces for the player - will be set at game start
+  const [playerColor, setPlayerColor] = useState('white')
+  
+  // Generate available pieces based on player color
+  const generatePieces = (color) => [
+    { id: `king-1-${color}`, type: 'king', color, value: PIECE_VALUES.king },
+    { id: `queen-1-${color}`, type: 'queen', color, value: PIECE_VALUES.queen },
+    { id: `rook-1-${color}`, type: 'rook', color, value: PIECE_VALUES.rook },
+    { id: `rook-2-${color}`, type: 'rook', color, value: PIECE_VALUES.rook },
+    { id: `bishop-1-${color}`, type: 'bishop', color, value: PIECE_VALUES.bishop },
+    { id: `bishop-2-${color}`, type: 'bishop', color, value: PIECE_VALUES.bishop },
+    { id: `knight-1-${color}`, type: 'knight', color, value: PIECE_VALUES.knight },
+    { id: `knight-2-${color}`, type: 'knight', color, value: PIECE_VALUES.knight },
+    { id: `pawn-1-${color}`, type: 'pawn', color, value: PIECE_VALUES.pawn },
+    { id: `pawn-2-${color}`, type: 'pawn', color, value: PIECE_VALUES.pawn },
+    { id: `pawn-3-${color}`, type: 'pawn', color, value: PIECE_VALUES.pawn },
+    { id: `pawn-4-${color}`, type: 'pawn', color, value: PIECE_VALUES.pawn },
+    { id: `pawn-5-${color}`, type: 'pawn', color, value: PIECE_VALUES.pawn },
+  ]
+  
+  const [availablePieces, setAvailablePieces] = useState(generatePieces('white'))
   
   // Stage-specific piece value constraint
   const maxStageValues = {
@@ -55,6 +61,12 @@ export function GameProvider({ children }) {
   
   // Calculate total value of selected pieces
   const selectedPiecesValue = selectedPieces.reduce((sum, piece) => sum + piece.value, 0)
+  
+  // Set player color and reset game with new colored pieces
+  const setPlayerTurn = (color) => {
+    setPlayerColor(color);
+    resetGame(color);
+  }
   
   // Place a piece on the board
   const placePiece = (pieceId, position) => {
@@ -101,25 +113,11 @@ export function GameProvider({ children }) {
     setAvailablePieces([...availablePieces, piece])
   }
   
-  // Reset the game state
-  const resetGame = () => {
+  // Reset the game state with a specific color
+  const resetGame = (color = playerColor) => {
     setBoard(createEmptyBoard())
     setSelectedPieces([])
-    setAvailablePieces([
-      { id: 'king-1', type: 'king', color: 'white', value: PIECE_VALUES.king },
-      { id: 'queen-1', type: 'queen', color: 'white', value: PIECE_VALUES.queen },
-      { id: 'rook-1', type: 'rook', color: 'white', value: PIECE_VALUES.rook },
-      { id: 'rook-2', type: 'rook', color: 'white', value: PIECE_VALUES.rook },
-      { id: 'bishop-1', type: 'bishop', color: 'white', value: PIECE_VALUES.bishop },
-      { id: 'bishop-2', type: 'bishop', color: 'white', value: PIECE_VALUES.bishop },
-      { id: 'knight-1', type: 'knight', color: 'white', value: PIECE_VALUES.knight },
-      { id: 'knight-2', type: 'knight', color: 'white', value: PIECE_VALUES.knight },
-      { id: 'pawn-1', type: 'pawn', color: 'white', value: PIECE_VALUES.pawn },
-      { id: 'pawn-2', type: 'pawn', color: 'white', value: PIECE_VALUES.pawn },
-      { id: 'pawn-3', type: 'pawn', color: 'white', value: PIECE_VALUES.pawn },
-      { id: 'pawn-4', type: 'pawn', color: 'white', value: PIECE_VALUES.pawn },
-      { id: 'pawn-5', type: 'pawn', color: 'white', value: PIECE_VALUES.pawn },
-    ])
+    setAvailablePieces(generatePieces(color))
   }
 
   return (
@@ -131,6 +129,8 @@ export function GameProvider({ children }) {
       selectedPieces,
       selectedPiecesValue,
       currentMaxValue,
+      playerColor,
+      setPlayerTurn,
       placePiece,
       removePiece,
       resetGame

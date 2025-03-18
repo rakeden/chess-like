@@ -153,15 +153,15 @@ export default function PuzzleGame({ puzzleData }) {
       
       {/* Set a padding-bottom to make space for the piece selection card */}
       <div className="w-full h-full pb-24">
-        <Canvas camera={{ position: [0, 8, 8], fov: 45 }}>
+        <Canvas camera={{ position: [0, 6, 6], fov: 40 }}>
           <OrbitControls
             enablePan={false}
             enableRotate={true}
             minPolarAngle={Math.PI / 6}
             maxPolarAngle={Math.PI / 3}
             enableZoom={true}
-            minDistance={8}
-            maxDistance={15}
+            minDistance={5}
+            maxDistance={10}
             rotateSpeed={0.5}
             // Disable rotation around Y axis (vertical axis)
             minAzimuthAngle={-Math.PI / 36}

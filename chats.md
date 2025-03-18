@@ -465,12 +465,18 @@ Adjust the camera to match a traditional chess board view with limited rotation.
    - Explicitly enabled rotation and zoom controls
    - Kept pan disabled to maintain focus on the board
    - Reduced rotation speed for more precise adjustments
+4. Zoom refinement:
+   - Adjusted camera position from [0,8,8] to [0,6,6] to bring the board closer
+   - Reduced FOV from 45° to 40° for a tighter focus on the board
+   - Decreased the min/max distance constraints to keep the board properly sized in view
+   - Fine-tuned the distance parameters to ensure the board fills most of the scene
 
 ### Tech Details
 - Configured OrbitControls with specific angle constraints
 - Set minPolarAngle and maxPolarAngle for vertical rotation limits
 - Used minAzimuthAngle and maxAzimuthAngle to restrict horizontal rotation
 - Adjusted camera position coordinates and field of view
+- Optimized the camera distance settings for better framing of the board
 
 ### Next Steps
 - Fine-tune lighting to match the new camera angle

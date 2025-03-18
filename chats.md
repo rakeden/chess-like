@@ -508,3 +508,61 @@ Bring the board closer to fill most of the scene and ensure it's at the same lev
 - Fine-tune materials and shadows for the closer view
 - Evaluate performance with the closer camera position
 - Add camera position presets for different game phases
+
+## Scene Layout Optimization
+
+### User Request
+Move the piece selection to the bottom of the screen and the board up a little bit.
+
+### Actions Taken
+1. Board position adjustment:
+   - Wrapped the Board component in a group with a positive Y-axis position (0.5 units)
+   - Moved the board up to create more space at the bottom of the scene
+   - Maintained the same camera angle and perspective
+2. Piece selection repositioning:
+   - Moved the ThreeDPieceSelection component to the bottom of the scene
+   - Positioned it at Y=-2.5 to create clear separation from the board
+   - Wrapped the component in a group for easier positioning
+3. Layout optimization:
+   - Created a cleaner visual hierarchy with the board as the main focus
+   - Established a more intuitive interface with pieces below the board
+   - Improved the overall composition of the 3D scene
+
+### Tech Details
+- Used Three.js group components to position elements without changing their internal structure
+- Maintained consistent camera settings while adjusting the scene layout
+- Preserved all interaction capabilities for both the board and piece selection
+- Created a more natural flow for the piece selection process
+
+### Next Steps
+- Consider adding visual cues to guide users to the piece selection area
+- Add subtle animations when transitioning between selection and placement
+- Fine-tune the lighting to properly illuminate both areas
+- Add a visual separator or background for the piece selection area
+
+## Z-Axis Adjustment for Piece Selection
+
+### User Request
+Move the ThreeDPieceSelection to be on the same z-axis as the board or slightly above.
+
+### Actions Taken
+1. Z-axis alignment:
+   - Changed the piece selection z-position from 0 to 1, bringing it slightly forward
+   - Maintained the same y-position at -2.5 to keep it below the board
+   - Improved visibility and accessibility of the piece selection component
+2. Component positioning:
+   - Fine-tuned the 3D positioning to create better visual continuity
+   - Enhanced the perceived interaction between board and selection panel
+   - Created a more cohesive spatial relationship between game elements
+
+### Tech Details
+- Adjusted the group position vector from [0, -2.5, 0] to [0, -2.5, 1]
+- Maintained the same x-axis positioning for consistent alignment
+- Preserved all other positioning and camera settings
+- Enhanced the visual hierarchy with proper z-indexing in 3D space
+
+### Next Steps
+- Consider adding subtle visual effects to strengthen the connection between selection and board
+- Fine-tune lighting to account for the new z-position
+- Evaluate the interaction experience with the adjusted positioning
+- Consider adding depth-based visual cues to guide users

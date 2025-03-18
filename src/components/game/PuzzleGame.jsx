@@ -169,10 +169,18 @@ export default function PuzzleGame({ puzzleData }) {
           />
           <ambientLight intensity={0.6} />
           <directionalLight position={[5, 10, 5]} intensity={0.8} castShadow />
-          <Board />
           
-          {/* Add the 3D piece selection component during preparation phase */}
-          {gamePhase === GAME_PHASES.PREPARATION && <ThreeDPieceSelection />}
+          {/* Move the board up by adjusting its position */}
+          <group position={[0, 0.5, 0]}>
+            <Board />
+          </group>
+          
+          {/* Position the piece selection at the bottom with a clear separation */}
+          {gamePhase === GAME_PHASES.PREPARATION && (
+            <group position={[0, -2.5, 1]}>
+              <ThreeDPieceSelection />
+            </group>
+          )}
         </Canvas>
         
         {/* Overlay for dnd-kit droppable areas */}

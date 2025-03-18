@@ -171,13 +171,13 @@ export default function PuzzleGame({ puzzleData }) {
           <directionalLight position={[5, 10, 5]} intensity={0.8} castShadow />
           
           {/* Move the board up by adjusting its position */}
-          <group position={[0, 0.5, 0]}>
+          <group position={[0, -0.5, -1.5]}>
             <Board />
           </group>
           
           {/* Position the piece selection at the bottom with a clear separation */}
           {gamePhase === GAME_PHASES.PREPARATION && (
-            <group position={[0, -2.5, 1]}>
+            <group position={[0, -2.5, 3.5]}>
               <ThreeDPieceSelection />
             </group>
           )}

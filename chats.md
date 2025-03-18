@@ -446,3 +446,34 @@ Make FEN notation display optional rather than always visible.
 - Implement user preference saving for FEN display
 - Add keyboard shortcuts for common actions
 - Enhance the FEN display with additional chess position information
+
+## Camera View Adjustment
+
+### User Request
+Adjust the camera to match a traditional chess board view with limited rotation.
+
+### Actions Taken
+1. Camera position enhancement:
+   - Adjusted camera position to view the board from a higher, more angled perspective
+   - Changed camera FOV from 60° to 45° for better perspective
+   - Increased camera height and distance for a more traditional chess view
+2. Rotation constraints:
+   - Limited Y-axis rotation by setting tight azimuth angle constraints (±5°)
+   - Allowed approximately 30° of X-axis rotation via polar angle constraints
+   - Adjusted min/max distance to maintain proper board visibility
+3. Control refinements:
+   - Explicitly enabled rotation and zoom controls
+   - Kept pan disabled to maintain focus on the board
+   - Reduced rotation speed for more precise adjustments
+
+### Tech Details
+- Configured OrbitControls with specific angle constraints
+- Set minPolarAngle and maxPolarAngle for vertical rotation limits
+- Used minAzimuthAngle and maxAzimuthAngle to restrict horizontal rotation
+- Adjusted camera position coordinates and field of view
+
+### Next Steps
+- Fine-tune lighting to match the new camera angle
+- Consider adding subtle camera animations for game phase transitions
+- Optimize shadow rendering for the new viewing angle
+- Add optional preset camera positions (top-down, player view, etc.)

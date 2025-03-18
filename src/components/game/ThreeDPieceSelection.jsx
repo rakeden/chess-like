@@ -24,15 +24,18 @@ export default function ThreeDPieceSelection() {
   const [draggingPiece, setDraggingPiece] = useState(null);
   const [dragPosition, setDragPosition] = useState([0, 0, 0]);
   
-  // Filter pieces to only show player's color
+  // Filter pieces to only show player's color and exclude kings
   const playerPieces = useMemo(() => {
-    return availablePieces.filter(piece => piece.color === playerColor);
+    return availablePieces.filter(piece => 
+      piece.color === playerColor && piece.type !== 'king'
+    );
   }, [availablePieces, playerColor]);
   
   // Group pieces by type for display
   const groupedPieces = useMemo(() => {
     const groups = {};
-    const pieceTypes = ['king', 'queen', 'rook', 'bishop', 'knight', 'pawn'];
+    // Remove king from the list of piece types
+    const pieceTypes = ['queen', 'rook', 'bishop', 'knight', 'pawn'];
     
     pieceTypes.forEach(type => {
       groups[type] = playerPieces.filter(piece => piece.type === type);
@@ -41,28 +44,42 @@ export default function ThreeDPieceSelection() {
     return groups;
   }, [playerPieces]);
   
-  // Calculate positions for each piece
+  // Get one representative piece per type with count
+  const pieceTypesWithCount = useMemo(() => {
+    const result = [];
+    
+    Object.entries(groupedPieces).forEach(([type, pieces]) => {
+      if (pieces.length > 0) {
+        // Take the first piece of this type as representative
+        result.push({
+          ...pieces[0],
+          count: pieces.length,
+          // Store all piece IDs of this type for reference
+          allPieceIds: pieces.map(p => p.id)
+        });
+      }
+    });
+    
+    return result;
+  }, [groupedPieces]);
+  
+  // Calculate positions for each piece type
   const piecePositions = useMemo(() => {
     const positions = {};
-    const pieceTypes = ['king', 'queen', 'rook', 'bishop', 'knight', 'pawn'];
+    const pieceTypes = Object.keys(groupedPieces).filter(type => groupedPieces[type].length > 0);
     
     let offsetX = -((pieceTypes.length - 1) * PIECE_SPACING) / 2;
     
-    pieceTypes.forEach((type, typeIndex) => {
-      const typePieces = groupedPieces[type] || [];
-      
-      typePieces.forEach((piece, pieceIndex) => {
-        // Position each piece in a row by type
-        positions[piece.id] = [
-          offsetX + typeIndex * PIECE_SPACING,
-          -ROW_HEIGHT,
-          pieceIndex * 0.5
-        ];
-      });
+    pieceTypesWithCount.forEach((piece, index) => {
+      positions[piece.id] = [
+        offsetX + index * PIECE_SPACING,
+        -ROW_HEIGHT,
+        0
+      ];
     });
     
     return positions;
-  }, [groupedPieces]);
+  }, [pieceTypesWithCount, groupedPieces]);
   
   // Move these handlers inside useEffect
   useEffect(() => {
@@ -131,19 +148,26 @@ export default function ThreeDPieceSelection() {
       isMouseDown = true;
       
       if (hoveredPiece) {
-        setDraggingPiece(hoveredPiece);
-        gl.domElement.style.cursor = 'grabbing';
+        // Find the piece type that was clicked
+        const hoveredPieceType = pieceTypesWithCount.find(p => p.id === hoveredPiece);
         
-        // Set initial drag position
-        const x = (event.clientX / window.innerWidth) * 2 - 1;
-        const y = -(event.clientY / window.innerHeight) * 2 + 1;
-        raycaster.setFromCamera({ x, y }, camera);
-        
-        const planeZ = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
-        const targetPosition = new THREE.Vector3();
-        raycaster.ray.intersectPlane(planeZ, targetPosition);
-        
-        setDragPosition([targetPosition.x, targetPosition.y, -3]);
+        if (hoveredPieceType && hoveredPieceType.count > 0) {
+          // Get the first available piece ID of this type
+          const availablePieceId = hoveredPieceType.allPieceIds[0];
+          setDraggingPiece(availablePieceId);
+          gl.domElement.style.cursor = 'grabbing';
+          
+          // Set initial drag position
+          const x = (event.clientX / window.innerWidth) * 2 - 1;
+          const y = -(event.clientY / window.innerHeight) * 2 + 1;
+          raycaster.setFromCamera({ x, y }, camera);
+          
+          const planeZ = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
+          const targetPosition = new THREE.Vector3();
+          raycaster.ray.intersectPlane(planeZ, targetPosition);
+          
+          setDragPosition([targetPosition.x, targetPosition.y, -3]);
+        }
       }
     };
     
@@ -188,15 +212,12 @@ export default function ThreeDPieceSelection() {
       canvas.removeEventListener('mousedown', handleMouseDown);
       canvas.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [hoveredPiece, draggingPiece, gl, raycaster, scene, camera, placePiece]);
+  }, [hoveredPiece, draggingPiece, gl, raycaster, scene, camera, placePiece, pieceTypesWithCount]);
   
   return (
     <group ref={groupRef} position={[0, 0, -4]}>
-      {/* Show available pieces in a row */}
-      {playerPieces.map((piece) => {
-        // Skip rendering if this piece is being dragged
-        if (draggingPiece === piece.id) return null;
-        
+      {/* Show one piece per type with count */}
+      {pieceTypesWithCount.map((piece) => {
         const position = piecePositions[piece.id] || [0, 0, 0];
         
         return (
@@ -225,7 +246,7 @@ export default function ThreeDPieceSelection() {
               </mesh>
             )}
             
-            {/* Show point value below the piece using HTML */}
+            {/* Show point value and count below the piece using HTML */}
             <Html position={[0, -0.5, 0]} center>
               <div style={{ 
                 color: 'white', 
@@ -233,9 +254,13 @@ export default function ThreeDPieceSelection() {
                 padding: '2px 6px',
                 borderRadius: '4px',
                 fontSize: '12px',
-                fontWeight: 'bold'
+                fontWeight: 'bold',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center'
               }}>
-                {piece.value}
+                <div>{piece.value} pts</div>
+                <div>x{piece.count}</div>
               </div>
             </Html>
           </group>
@@ -262,46 +287,6 @@ export default function ThreeDPieceSelection() {
           })}
         </group>
       )}
-      
-      {/* Show progress bar for piece value limit */}
-      <group position={[0, -ROW_HEIGHT - 0.5, 0]}>
-        <mesh position={[0, 0, 0]}>
-          <boxGeometry args={[5, 0.2, 0.1]} />
-          <meshBasicMaterial color={0x333333} />
-        </mesh>
-        
-        <mesh 
-          position={[
-            -2.5 + ((selectedPiecesValue / currentMaxValue) * 5) / 2,
-            0,
-            0.05
-          ]}
-          scale={[
-            Math.min(selectedPiecesValue / currentMaxValue, 1) * 5,
-            0.2,
-            0.1
-          ]}
-        >
-          <boxGeometry args={[1, 1, 1]} />
-          <meshBasicMaterial color={
-            selectedPiecesValue >= currentMaxValue ? 0xff3333 : 0x33ff33
-          } />
-        </mesh>
-        
-        {/* Show current/max value using HTML */}
-        <Html position={[0, 0.3, 0]} center>
-          <div style={{ 
-            color: 'white', 
-            backgroundColor: 'rgba(0,0,0,0.7)', 
-            padding: '4px 8px',
-            borderRadius: '4px',
-            fontSize: '14px',
-            fontWeight: 'bold'
-          }}>
-            {`${selectedPiecesValue}/${currentMaxValue} points`}
-          </div>
-        </Html>
-      </group>
     </group>
   );
 } 

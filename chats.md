@@ -566,3 +566,32 @@ Move the ThreeDPieceSelection to be on the same z-axis as the board or slightly 
 - Fine-tune lighting to account for the new z-position
 - Evaluate the interaction experience with the adjusted positioning
 - Consider adding depth-based visual cues to guide users
+
+## Kings Removed from Piece Selection
+
+### User Request
+Remove the king from the piece selection as it should always be on the board. Put both kings on the board for every stage.
+
+### Actions Taken
+1. Piece Selection Modification:
+   - Removed kings from the available pieces in `ThreeDPieceSelection` component
+   - Updated the filter to exclude any piece with type 'king'
+   - Removed 'king' from the piece types array used for grouping
+   - Maintained the same selection behavior for other piece types
+2. Code Structure Improvements:
+   - Added clear comments to explain the king exclusion
+   - Updated the player pieces filter to exclude kings with a compound condition
+   - Ensured king pieces are still available in the game context for board placement
+
+### Tech Details
+- Modified the piece filtering logic to exclude kings: `piece.color === playerColor && piece.type !== 'king'`
+- Removed 'king' from the `pieceTypes` array: `['queen', 'rook', 'bishop', 'knight', 'pawn']`
+- Kept all the drag-and-drop and hover functionality intact for the remaining pieces
+- Maintained compatibility with the existing game context and 3D rendering
+
+### Next Steps
+- Implement automatic king placement on the board at game start
+- Add logic to prevent king removal from the board
+- Consider visual indicators to distinguish kings from other pieces
+- Implement chess rules specific to king movement and protection
+- Add win condition detection based on king capture

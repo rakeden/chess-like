@@ -119,8 +119,31 @@ Actions taken:
    - Integrated 3D board rendering
    - Set up proper camera positioning
 
+## 2024-03-18 15:40 - Layout Structure Improvement
+
+User Request: Add a basic website structure and improve the layout
+
+Actions taken:
+1. Created layout components:
+   - Header with navigation and theme toggle
+   - Footer with links and credits
+   - Main Layout wrapper component
+2. Enhanced component organization:
+   - Separated Menu into its own component
+   - Improved Game component positioning
+   - Added proper spacing and containers
+3. Added navigation features:
+   - Main menu links (Play, Leaderboard, About)
+   - Theme toggle button
+   - Footer links and credits
+4. Improved responsive design:
+   - Better mobile navigation
+   - Proper spacing on all screen sizes
+   - Consistent container usage
+   - Flexible game board sizing
+
 Next steps:
-1. Add piece movement logic
-2. Create piece selection UI using Sheet component
-3. Implement basic AI opponent
-4. Add game state notifications
+1. Implement theme toggle functionality
+2. Add piece movement logic
+3. Create piece selection UI
+4. Set up game state notifications

@@ -465,21 +465,46 @@ Adjust the camera to match a traditional chess board view with limited rotation.
    - Explicitly enabled rotation and zoom controls
    - Kept pan disabled to maintain focus on the board
    - Reduced rotation speed for more precise adjustments
-4. Zoom refinement:
-   - Adjusted camera position from [0,8,8] to [0,6,6] to bring the board closer
-   - Reduced FOV from 45° to 40° for a tighter focus on the board
-   - Decreased the min/max distance constraints to keep the board properly sized in view
-   - Fine-tuned the distance parameters to ensure the board fills most of the scene
 
 ### Tech Details
 - Configured OrbitControls with specific angle constraints
 - Set minPolarAngle and maxPolarAngle for vertical rotation limits
 - Used minAzimuthAngle and maxAzimuthAngle to restrict horizontal rotation
 - Adjusted camera position coordinates and field of view
-- Optimized the camera distance settings for better framing of the board
 
 ### Next Steps
 - Fine-tune lighting to match the new camera angle
 - Consider adding subtle camera animations for game phase transitions
 - Optimize shadow rendering for the new viewing angle
 - Add optional preset camera positions (top-down, player view, etc.)
+
+## Board Focus Enhancement
+
+### User Request
+Bring the board closer to fill most of the scene and ensure it's at the same level as the board.
+
+### Actions Taken
+1. Camera position refinement:
+   - Decreased camera height from 8 to 5 units for a closer view
+   - Reduced distance from 8 to 6 units to bring the board closer
+   - Narrowed the field of view from 45° to 40° to reduce perspective distortion
+2. View constraints adjustment:
+   - Tightened the polar angle range (vertical rotation) for a more focused view
+   - Changed minPolarAngle from π/6 to π/4.5 and maxPolarAngle from π/3 to π/3.5
+   - Reduced the allowed zoom range to keep the board properly framed
+3. Zoom parameters optimization:
+   - Decreased minDistance from 8 to 5 for closer inspection
+   - Reduced maxDistance from 15 to 10 to prevent zooming too far out
+   - Maintained the same Y-axis rotation constraints for consistency
+
+### Tech Details
+- Fine-tuned camera position coordinates for optimal board visibility
+- Adjusted field of view for better focus on the game pieces
+- Calibrated OrbitControls parameters for improved user experience
+- Maintained the rotation limitations from previous adjustments
+
+### Next Steps
+- Consider adjusting lighting to complement the new camera position
+- Fine-tune materials and shadows for the closer view
+- Evaluate performance with the closer camera position
+- Add camera position presets for different game phases

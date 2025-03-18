@@ -415,3 +415,34 @@ Remove the old PieceSelection.jsx component as it's been replaced by ThreeDPiece
 - Fine-tune the drag-and-drop experience
 - Add additional feedback during piece placement
 - Implement piece movement rules in the playing phase
+
+## FEN Notation UI Enhancement
+
+### User Request
+Make FEN notation display optional rather than always visible.
+
+### Actions Taken
+1. UI enhancement for the FEN display:
+   - Added a toggle button to show/hide FEN notation
+   - Changed the FEN display from always visible to on-demand
+   - Added a "Show FEN" button in the preparation phase
+2. Improved user experience:
+   - Added tooltip information for the FEN button
+   - Repositioned the FEN display to the top-right corner for better UI balance
+   - Maintained copy-to-clipboard functionality in the hidden state
+3. Code optimization:
+   - Added showFEN state variable to track visibility
+   - Implemented toggle functionality
+   - Enhanced styling for better visual integration
+
+### Tech Details
+- Used conditional rendering for the FEN notation display
+- Maintained all existing FEN generation and clipboard functionality
+- Improved the UI layout for better space utilization
+- Enhanced tooltip descriptions for better user guidance
+
+### Next Steps
+- Consider adding a similar toggle for Stockfish commands
+- Implement user preference saving for FEN display
+- Add keyboard shortcuts for common actions
+- Enhance the FEN display with additional chess position information

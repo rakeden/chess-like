@@ -47,6 +47,7 @@ export default function PuzzleGame({ puzzleData }) {
   
   const [currentFEN, setCurrentFEN] = useState(puzzleData?.fen || '');
   const [copied, setCopied] = useState(false);
+  const [showFEN, setShowFEN] = useState(false);
   
   // Generate and update FEN when the board changes
   useEffect(() => {
@@ -112,14 +113,31 @@ export default function PuzzleGame({ puzzleData }) {
         </div>
       )}
       
-      {/* FEN notation display in preparation phase */}
+      {/* FEN notation button in preparation phase */}
       {gamePhase === GAME_PHASES.PREPARATION && (
-        <div className="absolute top-20 left-4 right-4 z-10 bg-black/50 text-white p-2 rounded-md flex items-center">
-          <div className="mr-2 font-mono text-xs truncate">
-            FEN: {currentFEN}
-          </div>
+        <div className="absolute top-20 right-4 z-10">
           <Tooltip>
             <TooltipTrigger asChild>
+              <Button 
+                size="sm"
+                variant="outline"
+                className="h-8 bg-black/50 text-white hover:bg-black/70"
+                onClick={() => setShowFEN(!showFEN)}
+              >
+                {showFEN ? 'Hide FEN' : 'Show FEN'}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Show/hide the FEN notation</p>
+            </TooltipContent>
+          </Tooltip>
+          
+          {/* Only show FEN when button is clicked */}
+          {showFEN && (
+            <div className="mt-2 bg-black/50 text-white p-2 rounded-md flex items-center">
+              <div className="mr-2 font-mono text-xs truncate max-w-[250px]">
+                {currentFEN}
+              </div>
               <Button 
                 size="sm"
                 variant="ghost"
@@ -128,11 +146,8 @@ export default function PuzzleGame({ puzzleData }) {
               >
                 {copied ? 'Copied!' : 'Copy'}
               </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Copy FEN to clipboard</p>
-            </TooltipContent>
-          </Tooltip>
+            </div>
+          )}
         </div>
       )}
       

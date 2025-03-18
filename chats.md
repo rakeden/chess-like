@@ -147,3 +147,34 @@ Next steps:
 2. Add piece movement logic
 3. Create piece selection UI
 4. Set up game state notifications
+
+## 2024-03-18 15:50 - Full-width Layout and Style Cleanup
+
+User Request: Make the website and app a full width layout and remove unnecessary styles
+
+Actions taken:
+1. Updated layout components for full width:
+   - Removed container constraints
+   - Added max-width limits (1400px)
+   - Improved padding and spacing
+   - Fixed header and footer alignment
+2. Enhanced game display:
+   - Made game board full height
+   - Adjusted menu card positioning
+   - Improved responsive behavior
+3. Cleaned up index.css:
+   - Removed duplicate styles
+   - Removed unused theme variables
+   - Removed redundant media queries
+   - Kept only essential shadcn/ui styles
+4. Improved component structure:
+   - Better height calculations
+   - Consistent spacing system
+   - Proper full-width behavior
+   - Mobile-friendly adjustments
+
+Next steps:
+1. Implement theme toggle functionality
+2. Add piece movement logic
+3. Create piece selection UI
+4. Set up game state notifications

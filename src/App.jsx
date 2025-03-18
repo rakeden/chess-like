@@ -6,11 +6,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { GameProvider } from '@/lib/game-context'
 import Layout from '@/components/layout/Layout'
 import Board from '@/components/game/Board'
-import './App.css'
 
 function Game() {
   return (
-    <div className="w-full aspect-square max-w-3xl mx-auto my-8">
+    <div className="w-full h-[calc(100vh-8rem)]">
       <Canvas camera={{ position: [0, 5, 5], fov: 50 }}>
         <Board />
       </Canvas>
@@ -20,8 +19,8 @@ function Game() {
 
 function Menu({ onStartGame }) {
   return (
-    <div className="flex items-center justify-center min-h-[calc(100vh-16rem)]">
-      <Card className="w-[350px]">
+    <div className="flex items-center justify-center min-h-[calc(100vh-8rem)]">
+      <Card className="w-[350px] mx-4">
         <CardHeader>
           <CardTitle>Welcome to Chess-like</CardTitle>
         </CardHeader>

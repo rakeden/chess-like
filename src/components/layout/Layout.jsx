@@ -7,10 +7,8 @@ export default function Layout({ children }) {
     <div className="relative min-h-screen flex flex-col">
       <Toaster />
       <Header />
-      <main className="flex-1">
-        <div className="container relative">
-          {children}
-        </div>
+      <main className="flex-1 w-full">
+        {children}
       </main>
       <Footer />
     </div>

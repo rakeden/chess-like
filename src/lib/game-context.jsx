@@ -1,4 +1,6 @@
-import { createContext, useContext, useState } from 'react'
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { calculatePieceValue } from './piece-utils';
+import { toast } from 'sonner';
 
 // Define piece values
 export const PIECE_VALUES = {
@@ -8,6 +10,14 @@ export const PIECE_VALUES = {
   rook: 5,
   queen: 9,
   king: 0 // King has no point value as it's required
+};
+
+// Define game phases
+export const GAME_PHASES = {
+  MENU: 'menu',
+  PREPARATION: 'preparation',
+  PLAYING: 'playing',
+  GAME_OVER: 'game_over'
 };
 
 // Initial board state - 5x5 empty board
@@ -22,128 +32,220 @@ const createEmptyBoard = () => {
   return board;
 };
 
-const GameContext = createContext()
+// Example pre-defined positions for opponent (for puzzles)
+const OPPONENT_POSITIONS = {
+  puzzle1: [
+    { id: 'king-1-black', type: 'king', color: 'black', position: { row: 0, col: 2 } },
+    { id: 'queen-1-black', type: 'queen', color: 'black', position: { row: 0, col: 1 } },
+    { id: 'rook-1-black', type: 'rook', color: 'black', position: { row: 0, col: 0 } },
+    { id: 'rook-2-black', type: 'rook', color: 'black', position: { row: 0, col: 4 } },
+    { id: 'pawn-1-black', type: 'pawn', color: 'black', position: { row: 1, col: 0 } },
+    { id: 'pawn-2-black', type: 'pawn', color: 'black', position: { row: 1, col: 1 } },
+    { id: 'pawn-3-black', type: 'pawn', color: 'black', position: { row: 1, col: 2 } },
+    { id: 'pawn-4-black', type: 'pawn', color: 'black', position: { row: 1, col: 3 } },
+    { id: 'pawn-5-black', type: 'pawn', color: 'black', position: { row: 1, col: 4 } },
+  ]
+};
+
+// Creating the context
+const GameContext = createContext();
+
+export const useGameContext = () => useContext(GameContext);
 
 export function GameProvider({ children }) {
-  const [stage, setStage] = useState(1)
-  const [board, setBoard] = useState(createEmptyBoard())
-  const [selectedPieces, setSelectedPieces] = useState([])
-  // Default to white pieces for the player - will be set at game start
-  const [playerColor, setPlayerColor] = useState('white')
+  // Game phase state
+  const [gamePhase, setGamePhase] = useState(GAME_PHASES.MENU);
   
-  // Generate available pieces based on player color
-  const generatePieces = (color) => [
-    { id: `king-1-${color}`, type: 'king', color, value: PIECE_VALUES.king },
-    { id: `queen-1-${color}`, type: 'queen', color, value: PIECE_VALUES.queen },
-    { id: `rook-1-${color}`, type: 'rook', color, value: PIECE_VALUES.rook },
-    { id: `rook-2-${color}`, type: 'rook', color, value: PIECE_VALUES.rook },
-    { id: `bishop-1-${color}`, type: 'bishop', color, value: PIECE_VALUES.bishop },
-    { id: `bishop-2-${color}`, type: 'bishop', color, value: PIECE_VALUES.bishop },
-    { id: `knight-1-${color}`, type: 'knight', color, value: PIECE_VALUES.knight },
-    { id: `knight-2-${color}`, type: 'knight', color, value: PIECE_VALUES.knight },
-    { id: `pawn-1-${color}`, type: 'pawn', color, value: PIECE_VALUES.pawn },
-    { id: `pawn-2-${color}`, type: 'pawn', color, value: PIECE_VALUES.pawn },
-    { id: `pawn-3-${color}`, type: 'pawn', color, value: PIECE_VALUES.pawn },
-    { id: `pawn-4-${color}`, type: 'pawn', color, value: PIECE_VALUES.pawn },
-    { id: `pawn-5-${color}`, type: 'pawn', color, value: PIECE_VALUES.pawn },
-  ]
+  // Player turn state (white/black)
+  const [playerColor, setPlayerColor] = useState('white');
   
-  const [availablePieces, setAvailablePieces] = useState(generatePieces('white'))
+  // Point system
+  const [pointLimit, setPointLimit] = useState(39); // Default points limit
+  const [selectedPieces, setSelectedPieces] = useState({});
   
-  // Stage-specific piece value constraint
-  const maxStageValues = {
-    1: 15, // Stage 1: Max 15 points
-    2: 20, // Stage 2: Max 20 points
-    3: 25, // Stage 3: Max 25 points
-  }
+  // Board state
+  const [boardState, setBoardState] = useState({});
   
-  const currentMaxValue = maxStageValues[stage] || maxStageValues[1]
+  // Preparation timer (in seconds)
+  const [preparationTime, setPreparationTime] = useState(180); // 3 minutes
+  const [remainingTime, setRemainingTime] = useState(preparationTime);
+  const [timerActive, setTimerActive] = useState(false);
   
-  // Calculate total value of selected pieces
-  const selectedPiecesValue = selectedPieces.reduce((sum, piece) => sum + piece.value, 0)
+  // Puzzle mode
+  const [isPuzzleMode, setIsPuzzleMode] = useState(false);
+  const [puzzleData, setPuzzleData] = useState(null);
   
-  // Set player color and reset game with new colored pieces
-  const setPlayerTurn = (color) => {
-    setPlayerColor(color);
-    resetGame(color);
-  }
+  // Calculate used points
+  const usedPoints = Object.values(selectedPieces).reduce((total, piece) => {
+    return total + calculatePieceValue(piece.type);
+  }, 0);
   
-  // Place a piece on the board
-  const placePiece = (pieceId, position) => {
-    if (!pieceId || !position) return
+  // Check if king is placed
+  const hasKing = Object.values(selectedPieces).some(piece => piece.type === 'king');
+  
+  // Start a new game
+  const startNewGame = useCallback((puzzleMode = false) => {
+    // Reset the game state
+    setBoardState({});
+    setSelectedPieces({});
+    setRemainingTime(preparationTime);
     
-    const { row, col } = position
-    // Copy the current board
-    const newBoard = [...board]
+    // Randomly assign player color
+    const randomColor = Math.random() > 0.5 ? 'white' : 'black';
+    setPlayerColor(randomColor);
     
-    // Find the piece in available or selected pieces
-    const piece = availablePieces.find(p => p.id === pieceId) || 
-                 selectedPieces.find(p => p.id === pieceId)
+    // Set puzzle mode
+    setIsPuzzleMode(puzzleMode);
     
-    if (!piece) return
-    
-    // Remove from available pieces if it's there
-    if (availablePieces.some(p => p.id === pieceId)) {
-      setAvailablePieces(availablePieces.filter(p => p.id !== pieceId))
-      setSelectedPieces([...selectedPieces, piece])
+    // If puzzle mode, load puzzle data
+    if (puzzleMode) {
+      // This would be replaced with actual puzzle data
+      setPuzzleData({
+        // Sample puzzle data
+        opponentPieces: {
+          'a1': { type: 'rook', color: randomColor === 'white' ? 'black' : 'white' },
+          'e1': { type: 'king', color: randomColor === 'white' ? 'black' : 'white' },
+          // More pieces would be defined here
+        }
+      });
+    } else {
+      setPuzzleData(null);
     }
     
-    // Place on board
-    newBoard[row][col] = piece
-    setBoard(newBoard)
-  }
+    // Set game phase to preparation
+    setGamePhase(GAME_PHASES.PREPARATION);
+    
+    // Start the timer
+    setTimerActive(true);
+  }, [preparationTime]);
   
-  // Remove a piece from the board
-  const removePiece = (position) => {
-    if (!position) return
+  // Start actual gameplay after preparation
+  const startPlaying = useCallback(() => {
+    // Check if king is placed
+    if (!hasKing) {
+      toast.error("You must place your king before starting the game!");
+      return;
+    }
     
-    const { row, col } = position
-    // Copy the current board
-    const newBoard = [...board]
+    // Check if points are within limit
+    if (usedPoints > pointLimit) {
+      toast.error(`You've used ${usedPoints} points, which exceeds the limit of ${pointLimit}!`);
+      return;
+    }
     
-    const piece = newBoard[row][col]
-    if (!piece) return
+    // Stop timer
+    setTimerActive(false);
     
-    // Remove from board
-    newBoard[row][col] = null
-    setBoard(newBoard)
+    // Set game phase to playing
+    setGamePhase(GAME_PHASES.PLAYING);
     
-    // Return to available pieces
-    setSelectedPieces(selectedPieces.filter(p => p.id !== piece.id))
-    setAvailablePieces([...availablePieces, piece])
-  }
+    toast.success("Game started! Make your first move.");
+  }, [hasKing, pointLimit, usedPoints]);
   
-  // Reset the game state with a specific color
-  const resetGame = (color = playerColor) => {
-    setBoard(createEmptyBoard())
-    setSelectedPieces([])
-    setAvailablePieces(generatePieces(color))
-  }
+  // Skip preparation timer
+  const skipPreparationTimer = useCallback(() => {
+    setRemainingTime(0);
+    setTimerActive(false);
+    
+    // If king is not placed, we don't start the game yet
+    if (!hasKing) {
+      toast.warning("Timer skipped. Place your king to start the game.");
+    } else if (usedPoints > pointLimit) {
+      toast.warning(`Timer skipped. Remove pieces to get under the ${pointLimit} point limit.`);
+    } else {
+      startPlaying();
+    }
+  }, [hasKing, pointLimit, usedPoints, startPlaying]);
+  
+  // Go back to menu
+  const goToMenu = useCallback(() => {
+    setGamePhase(GAME_PHASES.MENU);
+    setTimerActive(false);
+  }, []);
+  
+  // Timer effect
+  useEffect(() => {
+    let interval;
+    
+    if (timerActive && remainingTime > 0) {
+      interval = setInterval(() => {
+        setRemainingTime(prev => {
+          if (prev <= 1) {
+            clearInterval(interval);
+            setTimerActive(false);
+            
+            // Auto-start game if conditions are met
+            if (hasKing && usedPoints <= pointLimit) {
+              startPlaying();
+            } else {
+              // Notify why game can't start
+              if (!hasKing) {
+                toast.error("Time's up! You must place your king before starting the game.");
+              } else if (usedPoints > pointLimit) {
+                toast.error(`Time's up! You've used ${usedPoints} points, which exceeds the limit of ${pointLimit}.`);
+              }
+            }
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    
+    return () => clearInterval(interval);
+  }, [timerActive, remainingTime, hasKing, usedPoints, pointLimit, startPlaying]);
+  
+  // Handle adding a piece to the board
+  const addPiece = useCallback((cellId, piece) => {
+    setSelectedPieces(prev => ({
+      ...prev,
+      [cellId]: { ...piece }
+    }));
+  }, []);
+  
+  // Handle removing a piece from the board
+  const removePiece = useCallback((cellId) => {
+    setSelectedPieces(prev => {
+      const newPieces = { ...prev };
+      delete newPieces[cellId];
+      return newPieces;
+    });
+  }, []);
+  
+  // Set the player turn
+  const setPlayerTurn = useCallback((color) => {
+    setPlayerColor(color);
+  }, []);
+  
+  // The context value that will be provided
+  const value = {
+    gamePhase,
+    setGamePhase,
+    playerColor,
+    setPlayerTurn,
+    startNewGame,
+    startPlaying,
+    skipPreparationTimer,
+    goToMenu,
+    pointLimit,
+    setPointLimit,
+    usedPoints,
+    hasKing,
+    selectedPieces,
+    addPiece,
+    removePiece,
+    boardState,
+    setBoardState,
+    preparationTime,
+    setPreparationTime,
+    remainingTime,
+    isPuzzleMode,
+    puzzleData
+  };
 
   return (
-    <GameContext.Provider value={{
-      stage,
-      setStage,
-      board,
-      availablePieces,
-      selectedPieces,
-      selectedPiecesValue,
-      currentMaxValue,
-      playerColor,
-      setPlayerTurn,
-      placePiece,
-      removePiece,
-      resetGame
-    }}>
+    <GameContext.Provider value={value}>
       {children}
     </GameContext.Provider>
-  )
-}
-
-export function useGameContext() {
-  const context = useContext(GameContext)
-  if (!context) {
-    throw new Error('useGameContext must be used within a GameProvider')
-  }
-  return context
+  );
 } 

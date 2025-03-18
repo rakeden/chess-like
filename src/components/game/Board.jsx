@@ -1,151 +1,141 @@
-import { useRef, useState } from 'react'
-import { useFrame } from '@react-three/fiber'
-import { useGameContext } from '@/lib/game-context'
-import * as THREE from 'three'
-import Piece from './Piece'
+import { useMemo } from 'react'
+import { useDroppable } from '@dnd-kit/core'
+import { useGameContext, GAME_PHASES } from '@/lib/game-context'
+import { getCellBackgroundColor, getPieceSymbol, coordsToCellId } from '@/lib/piece-utils'
 
-const BOARD_SIZE = 5
-const SQUARE_SIZE = 1
-const BOARD_OFFSET = (BOARD_SIZE * SQUARE_SIZE) / 2 - SQUARE_SIZE / 2
-
-function Square({ position, color }) {
+// Individual cell component that can receive dropped pieces
+function BoardCell({ row, col, isDroppable, onClick, children }) {
+  const cellId = coordsToCellId(row, col)
+  const { isOver, setNodeRef } = useDroppable({
+    id: cellId,
+    disabled: !isDroppable
+  })
+  
+  const backgroundColor = getCellBackgroundColor(row, col)
+  const coordinates = `${String.fromCharCode(97 + col)}${5 - row}`
+  
   return (
-    <mesh position={position}>
-      <boxGeometry args={[SQUARE_SIZE, 0.1, SQUARE_SIZE]} />
-      <meshStandardMaterial color={color} />
-    </mesh>
+    <div
+      ref={setNodeRef}
+      className={`
+        relative w-full h-full flex items-center justify-center
+        ${backgroundColor}
+        ${isDroppable ? 'cursor-pointer' : ''}
+        ${isOver && isDroppable ? 'ring-2 ring-primary ring-inset' : ''}
+      `}
+      data-cell-id={cellId}
+      onClick={onClick}
+    >
+      {children}
+      
+      {/* Coordinates label */}
+      <span className="absolute bottom-0.5 right-1 text-[0.5rem] text-muted-foreground opacity-50">
+        {coordinates}
+      </span>
+    </div>
   )
 }
 
-export default function Board() {
-  const { board, placePiece, removePiece } = useGameContext()
-  const boardRef = useRef()
-  const [hoveredCell, setHoveredCell] = useState(null)
-  const [selectedCell, setSelectedCell] = useState(null)
+// Piece component to display on the board
+function Piece({ piece, onClick }) {
+  const { playerColor, gamePhase } = useGameContext()
   
-  // Rotate the board slightly to get a better view
-  useFrame(() => {
-    if (boardRef.current) {
-      boardRef.current.rotation.x = -Math.PI / 18 // About 10 degrees tilt
-    }
-  })
-
-  // Handle mouse interaction with the board
-  const handlePointerMove = (e) => {
-    // Convert pointer position to board coordinates
-    e.stopPropagation()
-    
-    // Calculate the cell coordinates from the hit point
-    const x = Math.floor(e.point.x + 2.5)
-    const z = Math.floor(e.point.z + 2.5)
-    
-    // Only update if within board boundaries
-    if (x >= 0 && x < 5 && z >= 0 && z < 5) {
-      setHoveredCell({ row: z, col: x })
-    } else {
-      setHoveredCell(null)
-    }
-  }
+  // Determine if this piece is draggable (player's own piece during preparation)
+  const isDraggable = gamePhase === GAME_PHASES.PREPARATION && 
+                     piece.color === playerColor
   
-  const handlePointerOut = () => {
-    setHoveredCell(null)
-  }
-  
-  // Handle selecting a cell for piece placement or removal
-  const handleClick = (e) => {
-    e.stopPropagation()
-    
-    if (!hoveredCell) return
-    
-    // If a cell is already selected and we click on it again, deselect it
-    if (selectedCell && 
-        selectedCell.row === hoveredCell.row && 
-        selectedCell.col === hoveredCell.col) {
-      setSelectedCell(null)
-      return
-    }
-    
-    // Otherwise, select the hovered cell
-    setSelectedCell(hoveredCell)
-    
-    // If there's a piece on the cell, remove it
-    if (board[hoveredCell.row][hoveredCell.col]) {
-      removePiece(hoveredCell)
-    }
-  }
-  
-  // Function to handle dropping a piece onto the board - this will be connected to the DnD system
-  const handleDropOnBoard = (pieceId, position) => {
-    placePiece(pieceId, position)
-  }
-
-  // Create the checkered board and pieces for Three.js rendering
-  const boardSquares = []
-  
-  for (let row = 0; row < 5; row++) {
-    for (let col = 0; col < 5; col++) {
-      const isHovered = hoveredCell && hoveredCell.row === row && hoveredCell.col === col
-      const isSelected = selectedCell && selectedCell.row === row && selectedCell.col === col
-      
-      // Determine square color (dark or light)
-      const isLightSquare = (row + col) % 2 === 0
-      let squareColor
-      
-      if (isSelected) {
-        squareColor = new THREE.Color(0x4caf50) // Green for selected
-      } else if (isHovered) {
-        squareColor = new THREE.Color(0x2196f3) // Blue for hovered
-      } else {
-        squareColor = isLightSquare 
-          ? new THREE.Color(0xe0e0e0) // Light square
-          : new THREE.Color(0x78909c) // Dark square
-      }
-      
-      boardSquares.push(
-        <mesh 
-          key={`square-${row}-${col}`}
-          position={[col - 2, 0, row - 2]}
-          rotation={[-Math.PI / 2, 0, 0]}
-          onClick={handleClick}
-        >
-          <planeGeometry args={[1, 1]} />
-          <meshStandardMaterial color={squareColor} />
-        </mesh>
-      )
-      
-      // Render pieces on the board
-      const piece = board[row][col]
-      if (piece) {
-        boardSquares.push(
-          <Piece 
-            key={`piece-${piece.id}`}
-            type={piece.type}
-            color={piece.color}
-            position={[col - 2, 0.1, row - 2]}
-          />
-        )
-      }
-    }
-  }
-
-  // Return the 3D board for Three.js rendering
   return (
-    <group ref={boardRef}>
-      {/* Board container */}
-      <mesh 
-        onPointerMove={handlePointerMove}
-        onPointerOut={handlePointerOut}
-      >
-        <boxGeometry args={[5.2, 0.2, 5.2]} />
-        <meshStandardMaterial color={0x795548} />
-      </mesh>
-      
-      {/* Board squares and pieces */}
-      {boardSquares}
-      
-      {/* Lighting */}
-      <ambientLight intensity={0.5} />
-      <directionalLight position={[10, 10, 10]} intensity={0.8} />
-    </group>
+    <div
+      className={`
+        w-4/5 h-4/5 rounded-full flex items-center justify-center text-3xl
+        ${piece.color === 'white' ? 'bg-white text-black' : 'bg-black text-white'}
+        ${isDraggable ? 'cursor-grab active:cursor-grabbing' : ''}
+        transition-transform hover:scale-105
+      `}
+      onClick={onClick}
+    >
+      {getPieceSymbol(piece.type, piece.color)}
+    </div>
+  )
+}
+
+export function Board({ droppableCells = [] }) {
+  const { 
+    playerColor, 
+    gamePhase,
+    selectedPieces,
+    addPiece,
+    removePiece
+  } = useGameContext()
+  
+  // Create a 5x5 grid 
+  const boardSize = 5
+  const grid = useMemo(() => {
+    const cells = []
+    for (let i = 0; i < boardSize; i++) {
+      const row = []
+      for (let j = 0; j < boardSize; j++) {
+        row.push(coordsToCellId(i, j))
+      }
+      cells.push(row)
+    }
+    return cells
+  }, [])
+  
+  // Convert droppableCells array to a Set for faster lookup
+  const droppableCellsSet = useMemo(() => {
+    return new Set(droppableCells)
+  }, [droppableCells])
+  
+  // Handle clicking on a piece to remove it
+  const handlePieceClick = (e, cellId) => {
+    e.stopPropagation()
+    
+    if (gamePhase === GAME_PHASES.PREPARATION) {
+      // Only allow removing player's own pieces during preparation
+      const piece = selectedPieces[cellId]
+      if (piece && piece.color === playerColor) {
+        removePiece(cellId)
+      }
+    }
+  }
+  
+  // Handle clicking on an empty cell during preparation
+  const handleEmptyCellClick = (cellId) => {
+    if (gamePhase === GAME_PHASES.PREPARATION && droppableCellsSet.has(cellId)) {
+      // For now, we'll just show an alert - in a real implementation,
+      // this would open a piece selection dialog
+      alert(`Click on a piece in the piece selection panel and drag it to cell ${cellId}`)
+    }
+  }
+  
+  return (
+    <div className="w-full h-full aspect-square max-w-lg mx-auto rounded-md overflow-hidden border">
+      <div className="grid grid-cols-5 grid-rows-5 w-full h-full">
+        {grid.map((row, rowIndex) => (
+          row.map((cellId, colIndex) => {
+            const piece = selectedPieces[cellId]
+            const isDroppable = droppableCellsSet.has(cellId)
+            
+            return (
+              <BoardCell 
+                key={cellId} 
+                row={rowIndex} 
+                col={colIndex}
+                isDroppable={isDroppable}
+                onClick={() => !piece && handleEmptyCellClick(cellId)}
+              >
+                {piece && (
+                  <Piece 
+                    piece={piece} 
+                    onClick={(e) => handlePieceClick(e, cellId)}
+                  />
+                )}
+              </BoardCell>
+            )
+          })
+        ))}
+      </div>
+    </div>
   )
 } 

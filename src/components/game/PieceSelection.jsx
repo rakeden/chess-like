@@ -1,186 +1,139 @@
-import { useMemo } from 'react';
-import { 
-  DndContext, 
-  useSensor, 
-  useSensors, 
-  PointerSensor, 
-  useDraggable,
-  closestCenter 
-} from '@dnd-kit/core';
-import { CSS } from '@dnd-kit/utilities';
-import { useGameContext, PIECE_VALUES } from '@/lib/game-context';
-import { 
-  Card, 
-  CardContent, 
-  CardHeader, 
-  CardTitle, 
-  CardDescription 
-} from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
+import { useMemo, useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { useGameContext, GAME_PHASES } from '@/lib/game-context';
+import { useDraggable } from '@dnd-kit/core';
+import { CSS } from '@dnd-kit/utilities';
+import { generateAvailablePieces, calculatePieceValue, getPieceSymbol } from '@/lib/piece-utils';
 
-// Component to display an individual draggable piece
-const DraggablePiece = ({ piece }) => {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
-    id: piece.id,
-    data: { piece }
+function DraggablePiece({ piece, count, index }) {
+  const id = `${piece.type}-${index}-${piece.color}`;
+  const { attributes, listeners, setNodeRef, transform } = useDraggable({
+    id,
+    data: {
+      piece
+    }
   });
-  
+
   const style = {
     transform: CSS.Translate.toString(transform),
-    opacity: isDragging ? 0.5 : 1,
-    cursor: 'grab',
-    touchAction: 'none'
   };
 
   return (
-    <div
+    <div 
       ref={setNodeRef}
       style={style}
       {...listeners}
       {...attributes}
-      className="bg-card border hover:bg-accent p-3 rounded-lg inline-flex flex-col items-center justify-center w-12 h-16 m-1"
+      className="flex items-center justify-between p-2 border rounded-md mb-1 cursor-grab active:cursor-grabbing"
     >
-      <span className="text-2xl mb-1">{getPieceSymbol(piece.type, piece.color)}</span>
-      <span className="text-xs">{piece.value}</span>
+      <div className="flex items-center gap-2">
+        <div className={`w-8 h-8 flex items-center justify-center rounded-full ${
+          piece.color === 'white' ? 'bg-white text-black border border-gray-300' : 'bg-black text-white'
+        }`}>
+          <span className="text-2xl">{getPieceSymbol(piece.type, piece.color)}</span>
+        </div>
+        <span className="capitalize">{piece.type}</span>
+      </div>
+      <Badge variant="secondary">
+        {calculatePieceValue(piece.type)} pts
+      </Badge>
+      {count > 1 && (
+        <Badge variant="outline" className="ml-2">
+          ×{count}
+        </Badge>
+      )}
     </div>
   );
-};
-
-// Utility function to get chess piece symbol for the correct color
-function getPieceSymbol(type, color) {
-  const whiteSymbols = {
-    king: '♔',
-    queen: '♕',
-    rook: '♖',
-    bishop: '♗',
-    knight: '♘',
-    pawn: '♙'
-  };
-  
-  const blackSymbols = {
-    king: '♚',
-    queen: '♛',
-    rook: '♜',
-    bishop: '♝',
-    knight: '♞',
-    pawn: '♟'
-  };
-  
-  return color === 'white' ? whiteSymbols[type] || '?' : blackSymbols[type] || '?';
 }
 
 export function PieceSelection() {
   const { 
-    availablePieces,
-    selectedPieces,
-    selectedPiecesValue,
-    currentMaxValue,
     playerColor,
-    placePiece
+    usedPoints, 
+    pointLimit,
+    selectedPieces,
+    gamePhase
   } = useGameContext();
-
-  // Calculate percentage of points used
-  const pointsPercentage = useMemo(() => {
-    return Math.min(100, (selectedPiecesValue / currentMaxValue) * 100);
-  }, [selectedPiecesValue, currentMaxValue]);
-
-  // Group available pieces by type for display
-  const groupedPieces = useMemo(() => {
-    return availablePieces.reduce((grouped, piece) => {
-      // Only include pieces of the player's color
-      if (piece.color !== playerColor) return grouped;
-      
-      const type = piece.type;
-      if (!grouped[type]) {
-        grouped[type] = [];
-      }
-      grouped[type].push(piece);
-      return grouped;
-    }, {});
-  }, [availablePieces, playerColor]);
-
-  // Configure drag and drop sensors
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8,
-      },
-    })
+  
+  // Only show in preparation phase
+  if (gamePhase !== GAME_PHASES.PREPARATION) {
+    return null;
+  }
+  
+  // Generate all available pieces
+  const allPieces = useMemo(() => 
+    generateAvailablePieces(playerColor), 
+    [playerColor]
   );
   
-  // Handle the end of a drag operation
-  const handleDragEnd = (event) => {
-    const { active, over } = event;
+  // Count what's already on the board
+  const usedPieces = useMemo(() => {
+    const counts = {};
     
-    // Check if we have valid data
-    if (!active || !over) return;
+    Object.values(selectedPieces).forEach(piece => {
+      const { type } = piece;
+      counts[type] = (counts[type] || 0) + 1;
+    });
     
-    // Get piece ID from the active element
-    const pieceId = active.id;
+    return counts;
+  }, [selectedPieces]);
+  
+  // Group pieces by type and count them
+  const groupedPieces = useMemo(() => {
+    const groups = {};
     
-    // Get drop target cell coordinates
-    const overIdMatch = over.id.match(/cell-(\d+)-(\d+)/);
-    if (overIdMatch) {
-      const row = parseInt(overIdMatch[1], 10);
-      const col = parseInt(overIdMatch[2], 10);
-      
-      // Place the piece on the board
-      placePiece(pieceId, { row, col });
-    }
-  };
-
-  // Order pieces by value for display
-  const pieceTypes = ['king', 'queen', 'rook', 'bishop', 'knight', 'pawn'];
-
+    allPieces.forEach(piece => {
+      if (!groups[piece.type]) {
+        groups[piece.type] = {
+          piece,
+          totalCount: 0
+        };
+      }
+      groups[piece.type].totalCount++;
+    });
+    
+    return Object.entries(groups).map(([type, group]) => ({
+      piece: group.piece,
+      totalCount: group.totalCount,
+      availableCount: group.totalCount - (usedPieces[type] || 0)
+    }));
+  }, [allPieces, usedPieces]);
+  
   return (
-    <Card className="absolute bottom-4 left-4 right-4 p-2 z-10">
-      <CardContent className="p-2">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-sm font-medium">Points: {selectedPiecesValue}/{currentMaxValue}</span>
-          <span className={`text-sm ${pointsPercentage >= 100 ? 'text-destructive font-bold' : ''}`}>
-            {pointsPercentage >= 100 ? 'Max Reached!' : `${Math.round(pointsPercentage)}%`}
-          </span>
+    <Card className="w-64 overflow-auto shadow-lg">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-lg font-semibold">Available Pieces</CardTitle>
+        <div className="flex justify-between items-center text-sm">
+          <Badge 
+            variant={usedPoints > pointLimit ? "destructive" : "outline"}
+            className="font-mono"
+          >
+            {usedPoints} / {pointLimit} pts
+          </Badge>
+        </div>
+      </CardHeader>
+      <CardContent className="max-h-[calc(100vh-15rem)] overflow-y-auto">
+        <div className="space-y-1">
+          {groupedPieces.map(({ piece, totalCount, availableCount }, index) => (
+            availableCount > 0 && (
+              <DraggablePiece 
+                key={`${piece.type}-${index}`}
+                piece={piece}
+                count={availableCount}
+                index={index}
+              />
+            )
+          ))}
         </div>
         
-        <Progress value={pointsPercentage} className="h-1 mb-3" />
-        
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragEnd={handleDragEnd}
-        >
-          <div className="flex flex-wrap items-center justify-center gap-1">
-            {pieceTypes.map(type => (
-              groupedPieces[type]?.map(piece => (
-                <DraggablePiece 
-                  key={piece.id}
-                  piece={piece}
-                />
-              ))
-            ))}
+        {/* Display when no pieces are available */}
+        {groupedPieces.every(({ availableCount }) => availableCount === 0) && (
+          <div className="py-4 text-center text-muted-foreground">
+            All pieces have been placed
           </div>
-          
-          {selectedPieces.length > 0 && (
-            <div className="mt-2 pt-2 border-t">
-              <div className="flex justify-between items-center mb-1">
-                <span className="text-sm font-medium">Selected Pieces</span>
-                <span className="text-xs text-muted-foreground">{selectedPieces.length} pieces</span>
-              </div>
-              <div className="flex flex-wrap items-center justify-center">
-                {selectedPieces.map(piece => (
-                  <div 
-                    key={piece.id} 
-                    className="bg-accent/30 p-2 rounded-md inline-flex flex-col items-center justify-center w-10 h-14 m-1"
-                  >
-                    <span className="text-xl">{getPieceSymbol(piece.type, piece.color)}</span>
-                    <span className="text-xs">{piece.value}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </DndContext>
+        )}
       </CardContent>
     </Card>
   );

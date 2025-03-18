@@ -2,10 +2,10 @@ import { useState, useRef, useEffect } from 'react'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { GameProvider, useGameContext, GAME_PHASES } from '@/lib/game-context'
+import { TooltipProvider } from "@/components/ui/tooltip"
 import Layout from '@/components/layout/Layout'
 import PuzzleGame from '@/components/game/PuzzleGame'
 import PuzzleSelection from '@/components/game/PuzzleSelection'
-import { DndContext } from '@dnd-kit/core'
 import { getRandomPuzzle } from '@/lib/puzzles'
 
 function GameContent() {
@@ -66,11 +66,11 @@ function GameContent() {
 export default function App() {
   return (
     <GameProvider>
-      <DndContext>
+      <TooltipProvider>
         <Layout>
           <GameContent />
         </Layout>
-      </DndContext>
+      </TooltipProvider>
     </GameProvider>
   )
 }

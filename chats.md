@@ -595,3 +595,45 @@ Remove the king from the piece selection as it should always be on the board. Pu
 - Consider visual indicators to distinguish kings from other pieces
 - Implement chess rules specific to king movement and protection
 - Add win condition detection based on king capture
+
+## Router-Based Puzzle Page Structure
+
+### User Request
+Refactor the `PuzzleSelection` and `PuzzleGame` components into separate pages with URL-based routing to support direct links to specific puzzles.
+
+### Actions Taken
+1. Page Component Creation:
+   - Created a dedicated `PuzzlesPage` component for puzzle selection
+   - Implemented a `PuzzlePage` component for individual puzzle gameplay
+   - Migrated the functionality from existing components to these new pages
+2. React Router Implementation:
+   - Installed `react-router-dom` as a dependency
+   - Set up a router with routes for `/puzzles` and `/puzzles/:puzzleId`
+   - Implemented a redirect from the root path to the puzzles listing
+3. URL Parameter Handling:
+   - Added support for loading puzzles by ID from URL parameters
+   - Implemented error handling for invalid puzzle IDs
+   - Added navigation between puzzles and back to the puzzle list
+4. App Structure Refactoring:
+   - Removed the old `GameContent` component and phase-based rendering
+   - Used Router and Routes components to handle navigation
+   - Ensured the GameProvider and DndContext wrap all routed components
+5. Navigation Enhancement:
+   - Added "Back to Puzzles" button in the puzzle view
+   - Implemented proper navigation using the `useNavigate` hook
+   - Added error handling for puzzle loading failures
+
+### Tech Details
+- Used `BrowserRouter` for client-side routing
+- Implemented URL parameters with `useParams` hook to extract puzzle IDs
+- Leveraged `useNavigate` for programmatic navigation
+- Used `useEffect` to load puzzle data when URL parameters change
+- Maintained shared game state across routes with the `GameProvider` context
+
+### Next Steps
+- Add loading states for puzzle transitions
+- Implement puzzle history tracking
+- Add route-based puzzle sharing functionality
+- Consider adding query parameters for configuration options
+- Create a 404 page for invalid puzzle IDs
+- Add animated transitions between routes

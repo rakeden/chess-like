@@ -10,18 +10,17 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { useGameContext, PIECE_VALUES } from '@/lib/game-context';
 import { 
-  Progress, 
   Card, 
   CardContent, 
   CardHeader, 
   CardTitle, 
   CardDescription 
 } from '@/components/ui/card';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 
 // Component to display an individual draggable piece
-const DraggablePiece = ({ piece, isOver }) => {
+const DraggablePiece = ({ piece }) => {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: piece.id,
     data: { piece }
@@ -40,20 +39,10 @@ const DraggablePiece = ({ piece, isOver }) => {
       style={style}
       {...listeners}
       {...attributes}
-      className={`
-        flex items-center justify-between p-2 mb-2 rounded-md border
-        ${isOver ? 'opacity-50' : ''}
-      `}
+      className="bg-card border hover:bg-accent p-3 rounded-lg inline-flex flex-col items-center justify-center w-12 h-16 m-1"
     >
-      <div className="flex items-center">
-        <div className="w-8 h-8 flex items-center justify-center text-xl mr-2">
-          {getPieceSymbol(piece.type)}
-        </div>
-        <div>
-          <p className="font-medium capitalize">{piece.type}</p>
-          <p className="text-xs text-muted-foreground">Value: {piece.value}</p>
-        </div>
-      </div>
+      <span className="text-2xl mb-1">{getPieceSymbol(piece.type)}</span>
+      <span className="text-xs">{piece.value}</span>
     </div>
   );
 };
@@ -127,78 +116,58 @@ export function PieceSelection() {
     }
   };
 
+  // Order pieces by value for display
+  const pieceTypes = ['king', 'queen', 'rook', 'bishop', 'knight', 'pawn'];
+
   return (
-    <Sheet>
-      <SheetTrigger asChild>
-        <Button className="absolute bottom-4 right-4 z-10">
-          Select Pieces
-        </Button>
-      </SheetTrigger>
-      <SheetContent className="w-[400px] sm:w-[540px]">
-        <SheetHeader>
-          <SheetTitle>Select Your Pieces</SheetTitle>
-        </SheetHeader>
+    <Card className="absolute bottom-4 left-4 right-4 p-2 z-10">
+      <CardContent className="p-2">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-sm font-medium">Points: {selectedPiecesValue}/{currentMaxValue}</span>
+          <span className={`text-sm ${pointsPercentage >= 100 ? 'text-destructive font-bold' : ''}`}>
+            {pointsPercentage >= 100 ? 'Max Reached!' : `${Math.round(pointsPercentage)}%`}
+          </span>
+        </div>
         
-        <div className="mt-6">
-          <div className="flex items-center justify-between mb-2">
-            <span>Points Used: {selectedPiecesValue}/{currentMaxValue}</span>
-            <span className={pointsPercentage >= 100 ? 'text-destructive' : ''}>
-              {pointsPercentage >= 100 ? 'Max Reached!' : `${Math.round(pointsPercentage)}%`}
-            </span>
+        <Progress value={pointsPercentage} className="h-1 mb-3" />
+        
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <div className="flex flex-wrap items-center justify-center gap-1">
+            {pieceTypes.map(type => (
+              groupedPieces[type]?.map(piece => (
+                <DraggablePiece 
+                  key={piece.id}
+                  piece={piece}
+                />
+              ))
+            ))}
           </div>
-          <Progress value={pointsPercentage} className="h-2" />
-        </div>
-
-        <div className="mt-6 space-y-4">
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragEnd={handleDragEnd}
-          >
-            <h3 className="text-lg font-medium">Available Pieces</h3>
-            <div className="space-y-4">
-              {Object.entries(groupedPieces).map(([type, pieces]) => (
-                <Card key={type}>
-                  <CardHeader className="py-3">
-                    <CardTitle className="text-md capitalize">{type}s</CardTitle>
-                    <CardDescription>Value: {PIECE_VALUES[type]} points each</CardDescription>
-                  </CardHeader>
-                  <CardContent className="py-2">
-                    {pieces.map(piece => (
-                      <DraggablePiece 
-                        key={piece.id}
-                        piece={piece}
-                        isOver={false}
-                      />
-                    ))}
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-
-            {selectedPieces.length > 0 && (
-              <div className="mt-6">
-                <h3 className="text-lg font-medium mb-2">Selected Pieces</h3>
-                <Card>
-                  <CardContent className="py-4">
-                    {selectedPieces.map(piece => (
-                      <div key={piece.id} className="flex items-center p-2 mb-2 rounded-md border">
-                        <div className="w-8 h-8 flex items-center justify-center text-xl mr-2">
-                          {getPieceSymbol(piece.type)}
-                        </div>
-                        <div>
-                          <p className="font-medium capitalize">{piece.type}</p>
-                          <p className="text-xs text-muted-foreground">Value: {piece.value}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </CardContent>
-                </Card>
+          
+          {selectedPieces.length > 0 && (
+            <div className="mt-2 pt-2 border-t">
+              <div className="flex justify-between items-center mb-1">
+                <span className="text-sm font-medium">Selected Pieces</span>
+                <span className="text-xs text-muted-foreground">{selectedPieces.length} pieces</span>
               </div>
-            )}
-          </DndContext>
-        </div>
-      </SheetContent>
-    </Sheet>
+              <div className="flex flex-wrap items-center justify-center">
+                {selectedPieces.map(piece => (
+                  <div 
+                    key={piece.id} 
+                    className="bg-accent/30 p-2 rounded-md inline-flex flex-col items-center justify-center w-10 h-14 m-1"
+                  >
+                    <span className="text-xl">{getPieceSymbol(piece.type)}</span>
+                    <span className="text-xs">{piece.value}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </DndContext>
+      </CardContent>
+    </Card>
   );
 } 

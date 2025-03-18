@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { Canvas } from '@react-three/fiber'
+import { OrbitControls } from '@react-three/drei'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
@@ -8,13 +9,70 @@ import Layout from '@/components/layout/Layout'
 import Board from '@/components/game/Board'
 import { PieceSelection } from '@/components/game/PieceSelection'
 import { DndContext } from '@dnd-kit/core'
+import { useGameContext } from '@/lib/game-context'
+import { useDroppable } from '@dnd-kit/core'
+
+// Droppable cell component for the overlay
+const DroppableCell = ({ row, col }) => {
+  const { setNodeRef } = useDroppable({
+    id: `cell-${row}-${col}`,
+    data: { row, col }
+  })
+
+  return (
+    <div 
+      ref={setNodeRef}
+      style={{
+        position: 'absolute',
+        width: `${100/5}%`,
+        height: `${100/5}%`,
+        top: `${(row/5) * 100}%`,
+        left: `${(col/5) * 100}%`,
+        zIndex: 10,
+      }}
+    />
+  )
+}
 
 function Game() {
+  // Create droppable cells for the overlay
+  const droppableCells = []
+  for (let row = 0; row < 5; row++) {
+    for (let col = 0; col < 5; col++) {
+      droppableCells.push(
+        <DroppableCell 
+          key={`droppable-${row}-${col}`}
+          row={row}
+          col={col}
+        />
+      )
+    }
+  }
+
   return (
     <div className="w-full h-[calc(100vh-8rem)] relative">
-      <Canvas camera={{ position: [0, 5, 5], fov: 50 }}>
-        <Board />
-      </Canvas>
+      {/* Set a padding-bottom to make space for the piece selection card */}
+      <div className="w-full h-full pb-24">
+        <Canvas camera={{ position: [0, 5, 5], fov: 50 }}>
+          <OrbitControls
+            enablePan={false}
+            minPolarAngle={Math.PI / 4}
+            maxPolarAngle={Math.PI / 2}
+            minDistance={5}
+            maxDistance={10}
+          />
+          <Board />
+        </Canvas>
+        
+        {/* Overlay for dnd-kit droppable areas */}
+        <div className="absolute top-0 left-0 w-full h-full pointer-events-none">
+          <div className="relative w-full h-full pointer-events-auto">
+            {droppableCells}
+          </div>
+        </div>
+      </div>
+      
+      {/* Piece selection at the bottom */}
       <PieceSelection />
     </div>
   )

@@ -1,39 +1,12 @@
 import { useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
-import { OrbitControls } from '@react-three/drei'
 import { useGameContext } from '@/lib/game-context'
 import * as THREE from 'three'
 import Piece from './Piece'
-import { useDroppable } from '@dnd-kit/core'
 
 const BOARD_SIZE = 5
 const SQUARE_SIZE = 1
 const BOARD_OFFSET = (BOARD_SIZE * SQUARE_SIZE) / 2 - SQUARE_SIZE / 2
-
-// A droppable cell component that integrates with dnd-kit
-const DroppableCell = ({ row, col, isHovered, isSelected, children }) => {
-  const { setNodeRef } = useDroppable({
-    id: `cell-${row}-${col}`,
-    data: { row, col }
-  })
-
-  return (
-    <div 
-      ref={setNodeRef}
-      style={{
-        position: 'absolute',
-        width: `${100/5}%`,
-        height: `${100/5}%`,
-        top: `${(row/5) * 100}%`,
-        left: `${(col/5) * 100}%`,
-        zIndex: 10,
-        opacity: 0,
-      }}
-    >
-      {children}
-    </div>
-  )
-}
 
 function Square({ position, color }) {
   return (
@@ -106,25 +79,13 @@ export default function Board() {
     placePiece(pieceId, position)
   }
 
-  // Create the checkered board
+  // Create the checkered board and pieces for Three.js rendering
   const boardSquares = []
-  const droppableCells = []
   
   for (let row = 0; row < 5; row++) {
     for (let col = 0; col < 5; col++) {
       const isHovered = hoveredCell && hoveredCell.row === row && hoveredCell.col === col
       const isSelected = selectedCell && selectedCell.row === row && selectedCell.col === col
-      
-      // Add droppable cell
-      droppableCells.push(
-        <DroppableCell 
-          key={`droppable-${row}-${col}`}
-          row={row}
-          col={col}
-          isHovered={isHovered}
-          isSelected={isSelected}
-        />
-      )
       
       // Determine square color (dark or light)
       const isLightSquare = (row + col) % 2 === 0
@@ -167,37 +128,24 @@ export default function Board() {
     }
   }
 
+  // Return the 3D board for Three.js rendering
   return (
-    <>
-      <OrbitControls
-        enablePan={false}
-        minPolarAngle={Math.PI / 4}
-        maxPolarAngle={Math.PI / 2.5}
-        minDistance={5}
-        maxDistance={10}
-      />
+    <group ref={boardRef}>
+      {/* Board container */}
+      <mesh 
+        onPointerMove={handlePointerMove}
+        onPointerOut={handlePointerOut}
+      >
+        <boxGeometry args={[5.2, 0.2, 5.2]} />
+        <meshStandardMaterial color={0x795548} />
+      </mesh>
+      
+      {/* Board squares and pieces */}
+      {boardSquares}
+      
+      {/* Lighting */}
       <ambientLight intensity={0.5} />
       <directionalLight position={[10, 10, 10]} intensity={0.8} />
-      <group ref={boardRef}>
-        {/* Board container */}
-        <mesh 
-          onPointerMove={handlePointerMove}
-          onPointerOut={handlePointerOut}
-        >
-          <boxGeometry args={[5.2, 0.2, 5.2]} />
-          <meshStandardMaterial color={0x795548} />
-        </mesh>
-        
-        {/* Board squares */}
-        {boardSquares}
-      </group>
-      
-      {/* Overlay for dnd-kit droppable areas */}
-      <div className="absolute top-0 left-0 w-full h-full pointer-events-none">
-        <div className="relative w-full h-full pointer-events-auto">
-          {droppableCells}
-        </div>
-      </div>
-    </>
+    </group>
   )
 } 

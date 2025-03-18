@@ -178,3 +178,36 @@ Next steps:
 2. Add piece movement logic
 3. Create piece selection UI
 4. Set up game state notifications
+
+## Drag-and-Drop Chess Piece Placement
+
+### User Request
+Implement drag-and-drop functionality for placing chess pieces on the board.
+
+### Actions Taken
+1. Installed required dependencies:
+   - Added `@dnd-kit/core`, `@dnd-kit/sortable`, and `@dnd-kit/utilities` for drag-and-drop functionality
+   - Added Radix UI components for Sheet and Progress UI components
+2. Enhanced the game context:
+   - Added piece values and types
+   - Implemented piece selection and placement logic
+   - Created board state management
+3. Created the piece selection UI:
+   - Implemented a slide-out sheet using `shadcn/ui` components
+   - Added progress indicator for piece value usage
+   - Organized pieces by type for easier selection
+4. Implemented drag-and-drop functionality:
+   - Made chess pieces draggable from the selection panel
+   - Created droppable cells on the board
+   - Handled piece placement and removal logic
+5. Enhanced the visual representation:
+   - Created 3D piece models using Three.js
+   - Added hover effects and animations
+   - Improved board styling and interactions
+
+### Next Steps
+- Implement game rules and piece movement
+- Add opponent AI logic
+- Create stage progression
+- Implement game completion and scoring
+- Add sound effects and visual feedback

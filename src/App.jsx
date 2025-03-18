@@ -6,13 +6,16 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { GameProvider } from '@/lib/game-context'
 import Layout from '@/components/layout/Layout'
 import Board from '@/components/game/Board'
+import { PieceSelection } from '@/components/game/PieceSelection'
+import { DndContext } from '@dnd-kit/core'
 
 function Game() {
   return (
-    <div className="w-full h-[calc(100vh-8rem)]">
+    <div className="w-full h-[calc(100vh-8rem)] relative">
       <Canvas camera={{ position: [0, 5, 5], fov: 50 }}>
         <Board />
       </Canvas>
+      <PieceSelection />
     </div>
   )
 }
@@ -64,10 +67,12 @@ export default function App() {
 
   return (
     <GameProvider>
-      <Layout>
-        {gameState === 'menu' && <Menu onStartGame={() => setGameState('game')} />}
-        {gameState === 'game' && <Game />}
-      </Layout>
+      <DndContext>
+        <Layout>
+          {gameState === 'menu' && <Menu onStartGame={() => setGameState('game')} />}
+          {gameState === 'game' && <Game />}
+        </Layout>
+      </DndContext>
     </GameProvider>
   )
 }

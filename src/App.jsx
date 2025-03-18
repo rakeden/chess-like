@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { GameProvider, useGameContext, GAME_PHASES } from '@/lib/game-context'
 import Layout from '@/components/layout/Layout'
 import Board from '@/components/game/Board'
+import ThreeDPieceSelection from '@/components/game/ThreeDPieceSelection'
 import { PieceSelection } from '@/components/game/PieceSelection'
 import { PlayerTurnCard } from '@/components/game/PlayerTurnCard'
 import { PreparationTimer } from '@/components/game/PreparationTimer'
@@ -108,6 +109,9 @@ function GameContent() {
               <ambientLight intensity={0.6} />
               <directionalLight position={[5, 10, 5]} intensity={0.8} castShadow />
               <Board />
+              
+              {/* Add the 3D piece selection component during preparation phase */}
+              {gamePhase === GAME_PHASES.PREPARATION && <ThreeDPieceSelection />}
             </Canvas>
             
             {/* Overlay for dnd-kit droppable areas */}
@@ -118,7 +122,7 @@ function GameContent() {
             </div>
           </div>
           
-          {/* Only show piece selection during preparation phase */}
+          {/* Keep the 2D UI piece selection during preparation phase as backup/alternative */}
           {gamePhase === GAME_PHASES.PREPARATION && <PieceSelection />}
         </div>
       );

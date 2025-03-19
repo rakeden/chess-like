@@ -14,7 +14,7 @@ const BOARD_OFFSET = (BOARD_SIZE * SQUARE_SIZE) / 2 - SQUARE_SIZE / 2
 
 // Helper function to get chess coordinate notation
 const getChessCoordinate = (row, col) => {
-  const letters = ['A', 'B', 'C', 'D', 'E'];
+  const letters = ['E', 'D', 'C', 'B', 'A']; // Reversed to have A at the bottom for white
   return `${letters[row]}${col + 1}`;
 };
 

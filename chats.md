@@ -923,3 +923,36 @@ Add chess-style coordinate labels (A1 to E5) to the board squares and ensure pro
 - Implement coordinate-based move input system
 - Add support for traditional chess move notation
 - Consider adding arrow key navigation using coordinates
+
+## Board Coordinate System Correction
+
+### User Request
+Ensure the white player is facing the correct side of the board with proper coordinate orientation.
+
+### Actions Taken
+1. Corrected Coordinate System:
+   - Reversed the letter array to have 'A' rank at the bottom for white player
+   - Maintained the same numerical progression (1-5) from left to right
+   - Ensured A1 appears at the bottom-left corner from white's perspective
+   - Preserved the board rotation logic for black player's view
+
+2. Coordinate Layout:
+   - White player's view (bottom to top):
+     * First rank (bottom): A1, A2, A3, A4, A5
+     * Second rank: B1, B2, B3, B4, B5
+     * Third rank: C1, C2, C3, C4, C5
+     * Fourth rank: D1, D2, D3, D4, D5
+     * Fifth rank (top): E1, E2, E3, E4, E5
+
+### Tech Details
+- Modified `getChessCoordinate` function to use reversed letter array
+- Maintained existing board rotation logic for black player's perspective
+- Preserved the visual styling and positioning of coordinate labels
+- Kept the same implementation for piece movement and placement
+
+### Next Steps
+- Add visual indicators for rank and file on board edges
+- Consider adding coordinate tooltips for better visibility
+- Implement move validation based on correct coordinates
+- Add support for chess notation move input
+- Consider adding coordinate-based move suggestions

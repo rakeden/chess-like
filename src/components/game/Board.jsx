@@ -24,7 +24,6 @@ export default function Board() {
   const { gl, scene, camera } = useThree();
   const boardRef = useRef();
   const pieceRefs = useRef({});
-  const dragControlsRef = useRef();
   const [activeDragPiece, setActiveDragPiece] = useState(null);
   
   // Get data from context
@@ -213,8 +212,47 @@ export default function Board() {
         <meshStandardMaterial color="#e2e8f0" roughness={0.8} metalness={0.1} />
       </mesh>
 
-      {/* Axes Helper */}
-      <axesHelper args={[5]} position={[0, 0, 0]} />
+      {/* Segmented Axes with Labels */}
+      <group>
+        {/* X-axis segments (red) */}
+        {Array.from({ length: 5 }).map((_, i) => (
+          <group key={`x-segment-${i}`}>
+            <mesh position={[i, 0, 0]}>
+              <boxGeometry args={[1, 0.02, 0.02]} />
+              <meshStandardMaterial color="red" />
+            </mesh>
+            <Html position={[i, -0.2, 0]} center>
+              <div style={{ color: 'red', fontSize: '8px' }}>{i}</div>
+            </Html>
+          </group>
+        ))}
+        
+        {/* Y-axis segments (green) */}
+        {Array.from({ length: 5 }).map((_, i) => (
+          <group key={`y-segment-${i}`}>
+            <mesh position={[0, i, 0]}>
+              <boxGeometry args={[0.02, 1, 0.02]} />
+              <meshStandardMaterial color="green" />
+            </mesh>
+            <Html position={[-0.2, i, 0]} center>
+              <div style={{ color: 'green', fontSize: '8px' }}>{i}</div>
+            </Html>
+          </group>
+        ))}
+        
+        {/* Z-axis segments (blue) */}
+        {Array.from({ length: 5 }).map((_, i) => (
+          <group key={`z-segment-${i}`}>
+            <mesh position={[0, 0, i]}>
+              <boxGeometry args={[0.02, 0.02, 1]} />
+              <meshStandardMaterial color="blue" />
+            </mesh>
+            <Html position={[0, -0.2, i]} center>
+              <div style={{ color: 'blue', fontSize: '8px' }}>{i}</div>
+            </Html>
+          </group>
+        ))}
+      </group>
 
       {/* Add declarative DragControls */}
       {draggableObjects.length > 0 && (

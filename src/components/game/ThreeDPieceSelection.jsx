@@ -75,7 +75,6 @@ export default function ThreeDPieceSelection({ onDragStart, onDragEnd }) {
     const pieceTypes = Object.keys(groupedPieces).filter(type => groupedPieces[type].length > 0);
     
     // Center pieces within 5 units (board width)
-    let offsetX = -2; // Start at left edge of board
     const availableWidth = 5; // Board width
     const totalSpacing = (pieceTypes.length - 1) * PIECE_SPACING;
     const startX = -((availableWidth - PIECE_SPACING) / 2);
@@ -83,7 +82,7 @@ export default function ThreeDPieceSelection({ onDragStart, onDragEnd }) {
     pieceTypesWithCount.forEach((piece, index) => {
       positions[piece.id] = [
         startX + (index * PIECE_SPACING),
-        -ROW_HEIGHT / 2,
+        -0.15, // Position pieces on top of the surface (surface at -0.25 + half height 0.1)
         0
       ];
     });
@@ -236,39 +235,19 @@ export default function ThreeDPieceSelection({ onDragStart, onDragEnd }) {
       {/* Simple surface underneath the pieces */}
       <group>
         {/* Main surface */}
-        <mesh position={[0, -0.15, 0]} receiveShadow rotation={[-Math.PI / 2, 0, 0]}>
-          <planeGeometry args={[5, 1]} />
+        <mesh position={[0, -0.15, 0]} receiveShadow>
+          <boxGeometry args={[5, 0.05, 1]} />
           <meshStandardMaterial 
             color="#334155" 
             roughness={0.7}
             metalness={0.2}
           />
         </mesh>
-        
-        {/* Edge highlighting */}
-        <mesh position={[0, -0.14, 0.9]} receiveShadow rotation={[-Math.PI / 2, 0, 0]}>
-          <planeGeometry args={[5, 0.05]} />
-          <meshStandardMaterial 
-            color="#94a3b8"
-            emissive="#64748b"
-            emissiveIntensity={0.2}
-          />
-        </mesh>
-        
-        {/* Edge highlighting - bottom */}
-        <mesh position={[0, -0.14, -0.9]} receiveShadow rotation={[-Math.PI / 2, 0, 0]}>
-          <planeGeometry args={[5, 0.05]} />
-          <meshStandardMaterial 
-            color="#94a3b8"
-            emissive="#64748b"
-            emissiveIntensity={0.2}
-          />
-        </mesh>
       </group>
       
       {/* Title for the selection area */}
       <Html
-        position={[0, 0.2, 0]}
+        position={[0, 0.3, 0]}
         center
         sprite
         transform

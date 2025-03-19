@@ -199,15 +199,15 @@ export default function PuzzlePage() {
             enablePan={false}
             enableRotate={!isDraggingPiece}
             enableZoom={!isDraggingPiece}
-            minPolarAngle={Math.PI / 4}
-            maxPolarAngle={Math.PI / 2.5}
+            // minPolarAngle={Math.PI / 4}
+            // maxPolarAngle={Math.PI / 2.5}
             minDistance={6}
             maxDistance={12}
             rotateSpeed={0.5}
             zoomSpeed={0.8}
             // Limit horizontal rotation
-            minAzimuthAngle={-Math.PI / 6}
-            maxAzimuthAngle={Math.PI / 6}
+            minAzimuthAngle={-Math.PI / 4}
+            maxAzimuthAngle={Math.PI / 4}
             // Target point (center of the board)
             target={[0, 0, 0]}
           />

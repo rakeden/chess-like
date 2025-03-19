@@ -1250,3 +1250,45 @@ Adjust the piece selection area to match the width of the chess board (5 squares
 - Evaluate piece scale in relation to new spacing
 - Add visual guides for piece placement
 - Consider adding piece type labels for clarity
+
+## Board and Piece Selection Refinements
+
+### User Request
+Refine the board and piece selection area for better visual consistency and usability.
+
+### Actions Taken
+1. Board Surface Adjustments:
+   - Removed the glow animation from squares for cleaner appearance
+   - Adjusted square box geometry position to respect height (rendered from center)
+   - Removed the wooden board base for a more minimal design
+   - Adjusted all components to work at ground level
+   - Reduced square thickness from 0.1 to 0.05 units
+   - Modified hover effect elevation from 0.02 to 0.01 units
+
+2. Piece Selection Area Improvements:
+   - Repositioned selection area closer to board (z=-2.5)
+   - Added a simple surface underneath pieces with dark slate color (#334155)
+   - Matched selection area width with board (5 units)
+   - Adjusted piece spacing (PIECE_SPACING = 0.8) for better distribution
+   - Improved piece count display visibility
+   - Added "Available Pieces" title for better UI clarity
+
+3. Chess Piece Enhancements:
+   - Standardized piece scale to 12 units across board and selection area
+   - Adjusted piece positioning to properly sit on surfaces
+   - Removed floating animations for more stable appearance
+   - Ensured pieces are correctly positioned on square surfaces
+
+### Tech Details
+- Used boxGeometry for squares with proper center-based positioning
+- Implemented consistent surface heights across board and selection area
+- Created proper spacing calculations for piece distribution
+- Maintained proper shadow and material properties
+- Enhanced visual hierarchy with adjusted component positions
+
+### Next Steps
+- Fine-tune lighting and shadows for the new layout
+- Consider adding subtle visual feedback for piece interactions
+- Evaluate piece distribution with different piece type combinations
+- Add tooltips or guides for piece movement rules
+- Consider adding animation for piece placement success/failure

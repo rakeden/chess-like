@@ -145,6 +145,15 @@ export default function Board() {
 
   return (
     <group ref={boardRef}>
+      {/* Floor */}
+      <mesh position={[0, 0, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+        <planeGeometry args={[20, 20]} />
+        <meshStandardMaterial color="#e2e8f0" roughness={0.8} metalness={0.1} />
+      </mesh>
+
+      {/* Axes Helper */}
+      <axesHelper args={[5]} position={[0, 0, 0]} />
+
       {/* Board cells */}
       {Array.from({ length: 5 }).map((_, row) =>
         Array.from({ length: 5 }).map((_, col) => {

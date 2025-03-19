@@ -5,7 +5,7 @@ import { useGameContext, PIECE_VALUES } from '@/lib/game-context';
 import Piece from './Piece';
 import * as THREE from 'three';
 
-const PIECE_SPACING = 1.1;
+const PIECE_SPACING = 0.8;
 const ROW_HEIGHT = 0.8;
 
 export default function ThreeDPieceSelection({ onDragStart, onDragEnd }) {
@@ -74,11 +74,15 @@ export default function ThreeDPieceSelection({ onDragStart, onDragEnd }) {
     const positions = {};
     const pieceTypes = Object.keys(groupedPieces).filter(type => groupedPieces[type].length > 0);
     
-    let offsetX = -((pieceTypes.length - 1) * PIECE_SPACING) / 2;
+    // Center pieces within 5 units (board width)
+    let offsetX = -2; // Start at left edge of board
+    const availableWidth = 5; // Board width
+    const totalSpacing = (pieceTypes.length - 1) * PIECE_SPACING;
+    const startX = -((availableWidth - PIECE_SPACING) / 2);
     
     pieceTypesWithCount.forEach((piece, index) => {
       positions[piece.id] = [
-        offsetX + index * PIECE_SPACING,
+        startX + (index * PIECE_SPACING),
         -ROW_HEIGHT / 2,
         0
       ];
@@ -233,7 +237,7 @@ export default function ThreeDPieceSelection({ onDragStart, onDragEnd }) {
       <group>
         {/* Main surface */}
         <mesh position={[0, -0.15, 0]} receiveShadow rotation={[-Math.PI / 2, 0, 0]}>
-          <planeGeometry args={[6, 1.8]} />
+          <planeGeometry args={[5, 1.8]} />
           <meshStandardMaterial 
             color="#334155" 
             roughness={0.7}
@@ -243,7 +247,7 @@ export default function ThreeDPieceSelection({ onDragStart, onDragEnd }) {
         
         {/* Edge highlighting */}
         <mesh position={[0, -0.14, 0.9]} receiveShadow rotation={[-Math.PI / 2, 0, 0]}>
-          <planeGeometry args={[6, 0.05]} />
+          <planeGeometry args={[5, 0.05]} />
           <meshStandardMaterial 
             color="#94a3b8"
             emissive="#64748b"
@@ -253,7 +257,7 @@ export default function ThreeDPieceSelection({ onDragStart, onDragEnd }) {
         
         {/* Edge highlighting - bottom */}
         <mesh position={[0, -0.14, -0.9]} receiveShadow rotation={[-Math.PI / 2, 0, 0]}>
-          <planeGeometry args={[6, 0.05]} />
+          <planeGeometry args={[5, 0.05]} />
           <meshStandardMaterial 
             color="#94a3b8"
             emissive="#64748b"

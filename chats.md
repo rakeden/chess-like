@@ -1168,3 +1168,73 @@ Reposition the piece selection area closer to the board and add a simple surface
 - Explore adding visual feedback when pieces are dragged
 - Add hover effects to indicate which pieces can be selected
 - Consider adding tooltips with piece movement rules
+
+## Scene Floor and Axes Helper Addition
+
+### User Request
+Add a floor plane to the scene and include an AxesHelper for better spatial reference.
+
+### Actions Taken
+1. Floor Implementation:
+   - Added a large plane geometry (20x20 units) as the floor
+   - Used a light gray color (#e2e8f0) for subtle contrast
+   - Positioned at y=-0.3 to sit below the board and pieces
+   - Applied appropriate material properties (roughness: 0.8, metalness: 0.1)
+   - Set up proper rotation and shadow receiving
+
+2. AxesHelper Addition:
+   - Added Three.js AxesHelper with 5-unit length
+   - Positioned at [-3, 0, -3] for better visibility
+   - Provides clear spatial reference for development
+   - Shows X (red), Y (green), and Z (blue) axes
+
+### Tech Details
+- Used planeGeometry for the floor with large dimensions for extended coverage
+- Applied meshStandardMaterial with subtle material properties
+- Positioned floor below other scene elements
+- Maintained proper shadow interactions
+- Added development-friendly coordinate visualization
+
+### Next Steps
+- Consider adding subtle grid lines to the floor
+- Evaluate floor texture options for better depth perception
+- Add ground shadows for better visual grounding
+- Consider making AxesHelper toggleable for development
+- Fine-tune floor material properties based on lighting
+
+## Piece Selection Width Adjustment
+
+### User Request
+Adjust the piece selection area to match the width of the chess board (5 squares).
+
+### Actions Taken
+1. Width Adjustment:
+   - Changed the piece selection surface width from 6 to 5 units to match board width
+   - Adjusted PIECE_SPACING from 1.1 to 0.8 units for better distribution
+   - Implemented new spacing calculation to center pieces within board width
+   - Maintained consistent ROW_HEIGHT of 0.8 units
+
+2. Piece Distribution:
+   - Created new positioning logic to spread pieces evenly across 5 units
+   - Calculated startX position to ensure pieces are centered
+   - Maintained proper spacing between pieces
+   - Preserved vertical positioning and z-depth
+
+3. Surface Updates:
+   - Adjusted main surface width from 6 to 5 units
+   - Updated edge highlighting widths to match
+   - Maintained consistent material properties
+   - Preserved visual styling and shadows
+
+### Tech Details
+- Used board width (5 units) as reference for piece selection area
+- Implemented new spacing calculation: startX = -((availableWidth - PIECE_SPACING) / 2)
+- Maintained consistent piece distribution with new PIECE_SPACING
+- Preserved all material properties and visual effects
+
+### Next Steps
+- Fine-tune piece spacing based on actual piece counts
+- Consider dynamic spacing adjustment for different numbers of pieces
+- Evaluate piece scale in relation to new spacing
+- Add visual guides for piece placement
+- Consider adding piece type labels for clarity

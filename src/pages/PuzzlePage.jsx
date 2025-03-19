@@ -185,7 +185,7 @@ export default function PuzzlePage() {
       
       {/* Set a padding-bottom to make space for the piece selection card */}
       <div className="w-full h-full pb-24">
-        <Canvas camera={{ position: [0, 5, 6], fov: 40 }}>
+        <Canvas camera={{ position: [0, 5, 8], fov: 40 }}>
           <OrbitControls
             ref={controlsRef}
             enablePan={false}
@@ -204,13 +204,13 @@ export default function PuzzlePage() {
           <directionalLight position={[5, 10, 5]} intensity={0.8} castShadow />
           
           {/* Move the board up by adjusting its position */}
-          <group position={[0, 0, -1.5]}>
+          <group position={[0, 0, 0]}>
             <Board />
           </group>
           
           {/* Position the piece selection at the bottom with a clear separation */}
           {gamePhase === GAME_PHASES.PREPARATION && (
-            <group position={[0, 1.5, 6.5]}>
+            <group position={[0, 0.4, 6]}>
               <ThreeDPieceSelection onDragStart={() => setIsDraggingPiece(true)} onDragEnd={() => setIsDraggingPiece(false)} />
             </group>
           )}

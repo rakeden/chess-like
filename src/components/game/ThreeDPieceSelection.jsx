@@ -237,7 +237,7 @@ export default function ThreeDPieceSelection({ onDragStart, onDragEnd }) {
       <group>
         {/* Main surface */}
         <mesh position={[0, -0.15, 0]} receiveShadow rotation={[-Math.PI / 2, 0, 0]}>
-          <planeGeometry args={[5, 1.8]} />
+          <planeGeometry args={[5, 1]} />
           <meshStandardMaterial 
             color="#334155" 
             roughness={0.7}

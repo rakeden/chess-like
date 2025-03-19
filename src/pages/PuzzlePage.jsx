@@ -185,20 +185,31 @@ export default function PuzzlePage() {
       
       {/* Set a padding-bottom to make space for the piece selection card */}
       <div className="w-full h-full pb-24">
-        <Canvas camera={{ position: [0, 5, 8], fov: 40 }}>
+        <Canvas 
+          camera={{ 
+            position: [0, 4, 8], 
+            fov: 50,
+            near: 0.1,
+            far: 1000
+          }}
+          shadows
+        >
           <OrbitControls
             ref={controlsRef}
             enablePan={false}
             enableRotate={!isDraggingPiece}
             enableZoom={!isDraggingPiece}
-            minPolarAngle={Math.PI / 4.5}
-            maxPolarAngle={Math.PI / 3.5}
-            minDistance={5}
-            maxDistance={10}
+            minPolarAngle={Math.PI / 4}
+            maxPolarAngle={Math.PI / 2.5}
+            minDistance={6}
+            maxDistance={12}
             rotateSpeed={0.5}
-            // Disable rotation around Y axis (vertical axis)
-            minAzimuthAngle={-Math.PI / 4}
-            maxAzimuthAngle={Math.PI / 4}
+            zoomSpeed={0.8}
+            // Limit horizontal rotation
+            minAzimuthAngle={-Math.PI / 6}
+            maxAzimuthAngle={Math.PI / 6}
+            // Target point (center of the board)
+            target={[0, 0, 0]}
           />
           <ambientLight intensity={0.6} />
           <directionalLight position={[5, 10, 5]} intensity={0.8} castShadow />

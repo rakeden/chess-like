@@ -27,7 +27,7 @@ const Square = ({ position = [0, 0, 0], color = 'white', size = 1, row, col, isH
   }, [row, col]);
   
   // Determine the label color based on square color
-  const labelColor = color === '#FFFFFF' || color === 'white' ? '#b58863' : '#f0d9b5';
+  const labelColor = color === '#FFFFFF' || color === 'white' ? '#8B8B8B' : '#f0d9b5';
   
   return (
     <mesh 
@@ -44,11 +44,11 @@ const Square = ({ position = [0, 0, 0], color = 'white', size = 1, row, col, isH
       
       {/* Coordinate label using Three.js Text */}
       <Text
-        position={[-size/2 + 0.05, 0.051, -size/2 + 0.05]} // Position at the left corner, slightly above surface
+        position={[-size/2 + 0.05, 0.051, size/2 - 0.15]} // Position at the left corner, slightly above surface
         fontSize={0.08}
         color={labelColor}
         anchorX="left"
-        anchorY="bottom"
+        anchorY="top"
         depthTest={false}
         renderOrder={1}
         rotation={[-Math.PI/2, 0, 0]} // Rotate to be flat on the square

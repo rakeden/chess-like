@@ -281,7 +281,7 @@ export default function Board() {
             <group key={`${row}-${col}`}>
               <Square
                 position={position}
-                color={isLight ? '#FFFFFF' : '#4B4B4B'}
+                color={isLight ? '#FFFFFF' : '#8B8B8B'}
                 row={row}
                 col={col}
                 isHovered={isHovered}

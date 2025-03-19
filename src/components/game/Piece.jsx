@@ -249,24 +249,26 @@ export default function Piece({
             }
           });
         } else {
-          console.log("No cell detected for drop");
-          onDragEnd(e, null);
+          // If dropped outside a valid board cell, still call onDragEnd with no cell data
+          onDragEnd(e, {
+            position: meshRef.current.position.clone(),
+            pieceData: {
+              id: id || meshRef.current.userData.pieceId,
+              type,
+              color,
+              value
+            }
+          });
         }
       }
     }
   };
   
   const handleDrag = (e) => {
-    if (meshRef.current && onDrag) {
-      onDrag(e, {
-        position: meshRef.current.position.clone(),
-        pieceData: {
-          id: id || meshRef.current.userData.pieceId,
-          type,
-          color,
-          value
-        }
-      });
+    if (meshRef.current) {
+      if (onDrag) {
+        onDrag(e);
+      }
     }
   };
 
@@ -331,6 +333,7 @@ export default function Piece({
       onDragStart={handleDragStart}
       onDrag={handleDrag}
       onDragEnd={handleDragEnd}
+      transformGroup={true}
     >
       {content}
     </DragControls>

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
@@ -25,13 +25,20 @@ export default function PuzzlePage() {
     opponentPieces,
     board,
     startPuzzle,
-    resetGame
+    resetGame,
+    setIsWhitesTurn,
+    setGamePhase,
+    syncBoardWithFen,
+    fen
   } = useGameContext();
   
   const [currentFEN, setCurrentFEN] = useState('');
   const [copied, setCopied] = useState(false);
   const [showFEN, setShowFEN] = useState(false);
   const [puzzleData, setPuzzleData] = useState(null);
+  const [showSolution, setShowSolution] = useState(false);
+  const [isDraggingPiece, setIsDraggingPiece] = useState(false);
+  const controlsRef = useRef(null);
   
   // Load the puzzle when component mounts or puzzleId changes
   useEffect(() => {
@@ -180,11 +187,12 @@ export default function PuzzlePage() {
       <div className="w-full h-full pb-24">
         <Canvas camera={{ position: [0, 5, 6], fov: 40 }}>
           <OrbitControls
+            ref={controlsRef}
             enablePan={false}
-            enableRotate={true}
+            enableRotate={!isDraggingPiece}
+            enableZoom={!isDraggingPiece}
             minPolarAngle={Math.PI / 4.5}
             maxPolarAngle={Math.PI / 3.5}
-            enableZoom={true}
             minDistance={5}
             maxDistance={10}
             rotateSpeed={0.5}
@@ -203,7 +211,7 @@ export default function PuzzlePage() {
           {/* Position the piece selection at the bottom with a clear separation */}
           {gamePhase === GAME_PHASES.PREPARATION && (
             <group position={[0, 1.5, 6.5]}>
-              <ThreeDPieceSelection />
+              <ThreeDPieceSelection onDragStart={() => setIsDraggingPiece(true)} onDragEnd={() => setIsDraggingPiece(false)} />
             </group>
           )}
         </Canvas>

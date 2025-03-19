@@ -766,3 +766,38 @@ Implement drag and drop functionality for chess pieces using the DragControls fr
 - Optimize drag performance for complex pieces
 - Implement touch support for mobile devices
 - Add visual feedback for illegal moves
+
+## Camera-Based Piece Selection Enhancement
+
+### User Request
+Improve piece selection to prioritize the piece closest to the camera when pieces overlap, and ensure only one piece can be moved at a time.
+
+### Actions Taken
+1. Raycaster Enhancement:
+   - Modified the raycasting logic to sort intersections by distance to camera
+   - Implemented selection of only the closest intersected piece when multiple pieces overlap
+   - Added distance sorting algorithm to prioritize front-most pieces
+   - Ensured consistent selection behavior regardless of piece arrangement
+2. Piece Movement Restriction:
+   - Added a check to prevent dragging new pieces when one is already being dragged
+   - Modified the `handlePieceDragStart` function to block additional drag attempts
+   - Ensured the dragging state is properly maintained throughout interactions
+   - Fixed edge cases where multiple pieces could be selected simultaneously
+3. DragControls Optimization:
+   - Added `transformGroup` property to DragControls for more reliable dragging
+   - Improved selection precision when pieces are stacked or partially overlapping
+   - Enhanced the visual feedback during selection to clearly indicate the active piece
+   - Fixed cursor behavior to consistently show the appropriate state
+
+### Tech Details
+- Used the built-in Three.js raycaster's distance property to sort intersections
+- Implemented the sorting with `intersects.sort((a, b) => a.distance - b.distance)`
+- Applied a defensive check with `if (draggingPiece) return` to prevent multiple drag operations
+- Enhanced the DragControls with `transformGroup={true}` for better group handling
+
+### Next Steps
+- Add visual indication of the currently selected piece
+- Implement highlighting or outlining of the front-most piece on hover
+- Consider adding depth-based selection indicators
+- Add haptic feedback for mobile users when selecting pieces
+- Optimize performance for scenes with many overlapping pieces

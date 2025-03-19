@@ -53,14 +53,6 @@ export default function Board() {
     placePiece
   } = safeContext;
   
-  // Debug the values we're using
-  console.log("Board using:", {
-    piecesLength: pieces.length,
-    opponentPiecesLength: opponentPieces.length,
-    playerColor,
-    gamePhase
-  });
-  
   // Use the raycaster hook to detect hovering over pieces and cells
   const { hoveredCell, hoveredPiece } = useRaycaster({
     types: ['cell', 'piece'],

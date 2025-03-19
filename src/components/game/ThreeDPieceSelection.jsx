@@ -8,7 +8,7 @@ import * as THREE from 'three';
 const PIECE_SPACING = 0.9;
 const ROW_HEIGHT = 1.0;
 
-export default function ThreeDPieceSelection() {
+export default function ThreeDPieceSelection({ onDragStart, onDragEnd }) {
   const { 
     availablePieces, 
     playerColor, 
@@ -89,6 +89,11 @@ export default function ThreeDPieceSelection() {
 
   // Handle drag start
   const handlePieceDragStart = (e, pieceId) => {
+    // If a piece is already being dragged, don't allow dragging another
+    if (draggingPiece) {
+      return;
+    }
+    
     // Find the piece type that was clicked
     const pieceType = pieceTypesWithCount.find(p => p.id === pieceId);
     
@@ -110,6 +115,11 @@ export default function ThreeDPieceSelection() {
       
       // Pause preparation timer while dragging
       pausePreparation();
+      
+      // Call parent's onDragStart callback if provided
+      if (onDragStart) {
+        onDragStart();
+      }
     }
   };
   
@@ -123,6 +133,7 @@ export default function ThreeDPieceSelection() {
     if (!draggingPiece || !draggedPieceData) {
       console.log("Drop rejected: No dragging piece data available");
       resumePreparation();
+      if (onDragEnd) onDragEnd();
       return;
     }
     
@@ -149,6 +160,11 @@ export default function ThreeDPieceSelection() {
     setActiveDragObject(null);
     setStartDragPosition(null);
     resumePreparation();
+    
+    // Call parent's onDragEnd callback if provided
+    if (onDragEnd) {
+      onDragEnd();
+    }
   };
 
   // Set up pointer events for hover effects
@@ -174,6 +190,10 @@ export default function ThreeDPieceSelection() {
       const intersects = raycaster.intersectObjects(piecesRef.current, true);
       
       if (intersects.length > 0) {
+        // Sort intersections by distance, closest first
+        intersects.sort((a, b) => a.distance - b.distance);
+        
+        // Take only the closest intersection
         const hoveredObject = intersects[0].object;
         let current = hoveredObject;
         
@@ -233,7 +253,9 @@ export default function ThreeDPieceSelection() {
               scale={[0.65, 0.65, 0.65]}
               visible={true}
               draggable={true}
-              onDragStart={(e) => handlePieceDragStart(e, piece.id)}
+              onDragStart={(e) => {
+                handlePieceDragStart(e, piece.id);
+              }}
               onDrag={handlePieceDrag}
               onDragEnd={handlePieceDrop}
               id={piece.id}
@@ -251,22 +273,23 @@ export default function ThreeDPieceSelection() {
               </mesh>
             )}
             
-            {/* Show point value and count below the piece using HTML */}
-            <Html position={[0, -0.4, 0]} center>
-              <div style={{ 
-                color: 'white', 
-                backgroundColor: 'rgba(0,0,0,0.5)', 
-                padding: '1px 4px',
-                borderRadius: '3px',
-                fontSize: '10px',
+            {/* Show available count */}
+            <Html
+              position={[0, -0.5, 0]}
+              center
+              sprite
+              transform
+              scale={0.2}
+              style={{
+                background: 'rgba(0,0,0,0.7)',
+                padding: '2px 8px',
+                borderRadius: '4px',
+                color: 'white',
                 fontWeight: 'bold',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center'
-              }}>
-                <div>{piece.value} pts</div>
-                <div>x{piece.count}</div>
-              </div>
+                pointerEvents: 'none'
+              }}
+            >
+              {piece.count}
             </Html>
           </group>
         );

@@ -47,8 +47,6 @@ const examplePuzzle = {
 const GameContext = createContext()
 
 export function GameProvider({ children }) {
-  console.log("GameProvider initializing");
-  
   // Game state
   const [gamePhase, setGamePhase] = useState(GAME_PHASES.MENU);
   const [stage, setStage] = useState(1);

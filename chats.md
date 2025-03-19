@@ -956,3 +956,77 @@ Ensure the white player is facing the correct side of the board with proper coor
 - Implement move validation based on correct coordinates
 - Add support for chess notation move input
 - Consider adding coordinate-based move suggestions
+
+## GLB Model Integration for Chess Pieces
+
+### User Request
+Replace the geometric shape-based chess pieces with GLB models from the assets directory.
+
+### Actions Taken
+1. Model Integration:
+   - Imported GLB models for all chess pieces (Bishop, King, Knight, Pawn, Queen, Rook)
+   - Implemented model preloading using useGLTF.preload for better performance
+   - Created a mapping between piece types and their corresponding models
+   - Removed the old geometric shape-based piece creation
+
+2. Material Handling:
+   - Implemented proper material cloning for each piece instance
+   - Added color-specific material properties for white and black pieces
+   - Maintained opacity animation for piece appearance
+   - Preserved metalness and roughness properties for realistic rendering
+
+3. Animation Enhancement:
+   - Simplified the animation system to work with GLB models
+   - Maintained the rotation and scale animations during piece appearance
+   - Improved the drag-and-drop interaction with the new models
+   - Ensured proper model positioning on the board
+
+4. Performance Optimization:
+   - Added model preloading to improve initial load time
+   - Implemented proper model and material cloning
+   - Maintained efficient rendering with proper scene management
+   - Preserved existing drag-and-drop functionality
+
+### Tech Details
+- Used @react-three/drei's useGLTF hook for model loading
+- Implemented model cloning to prevent material sharing
+- Maintained consistent scale and positioning across all piece types
+- Preserved the existing animation and interaction systems
+
+### Next Steps
+- Fine-tune model scaling for consistent piece sizes
+- Add shadows and lighting improvements for the detailed models
+- Consider adding piece-specific animations for movement
+- Optimize model loading for better performance
+- Add loading indicators during model initialization
+
+## Vite Configuration for GLB Models
+
+### User Request
+Fix Vite error related to parsing GLB files by adding proper configuration for handling 3D model assets.
+
+### Actions Taken
+1. Updated Vite Configuration:
+   - Added GLB files to `assetsInclude` in vite.config.js
+   - Configured Vite to properly handle 3D model files as assets
+   - Enabled direct importing of GLB files in React components
+   - Fixed the source parsing error for import analysis
+
+2. Configuration Details:
+   - Added `assetsInclude: ['**/*.glb']` to include all GLB files
+   - Maintained existing alias configuration for src imports
+   - Preserved React plugin configuration
+   - Ensured proper path resolution for model imports
+
+### Tech Details
+- Modified vite.config.js to include GLB file handling
+- Used glob pattern '**/*.glb' to match all GLB files in the project
+- Integrated with existing path alias configuration
+- Maintained compatibility with React plugin settings
+
+### Next Steps
+- Consider adding support for other 3D model formats if needed
+- Add file size optimization for model assets
+- Consider implementing model lazy loading
+- Add loading states during model import
+- Consider adding model compression options

@@ -228,7 +228,7 @@ export default function ThreeDPieceSelection({ onDragStart, onDragEnd }) {
   }, [pieceTypesWithCount]);
   
   return (
-    <group ref={groupRef} position={[0, 0.2, -4]}>
+    <group ref={groupRef} position={[0, -0.2, -4]}>
       {/* Show one piece per type with count */}
       {pieceTypesWithCount.map((piece) => {
         const position = piecePositions[piece.id] || [0, 0, 0];

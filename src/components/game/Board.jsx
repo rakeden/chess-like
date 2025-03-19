@@ -22,8 +22,8 @@ const getChessCoordinate = (row, col) => {
 const mapPositionToBoard = (row, col) => {
   // Adjust position to center the piece on a square
   // For 5x5 board with 1x1 squares, we offset by 2 to center (0,0,0) on the middle
-  // Use y=0.5 to ensure pieces sit correctly on the board surface
-  return [col - 2, 0.5, row - 2];
+  // Use y=0.1 to ensure pieces sit correctly on the board surface at ground level
+  return [col - 2, 0.1, row - 2];
 };
 
 export default function Board() {
@@ -85,10 +85,10 @@ export default function Board() {
     }
   }, [playerColor]);
   
-  // Gentle floating animation for the board
+  // Gentle floating animation for the board - reduced amplitude
   useFrame(({ clock }) => {
     if (boardRef.current) {
-      boardRef.current.position.y = Math.sin(clock.getElapsedTime() * 0.5) * 0.05;
+      boardRef.current.position.y = Math.sin(clock.getElapsedTime() * 0.5) * 0.02;
     }
   });
   
@@ -145,12 +145,6 @@ export default function Board() {
 
   return (
     <group ref={boardRef}>
-      {/* Board base */}
-      <mesh position={[0, -0.1, 0]} receiveShadow>
-        <boxGeometry args={[5.2, 0.2, 5.2]} />
-        <meshStandardMaterial color="#8B4513" />
-      </mesh>
-
       {/* Board cells */}
       {Array.from({ length: 5 }).map((_, row) =>
         Array.from({ length: 5 }).map((_, col) => {
@@ -175,7 +169,7 @@ export default function Board() {
               />
               {/* Coordinate label */}
               <Html
-                position={[position[0], 0.01, position[2]]}
+                position={[position[0], 0.005, position[2]]}
                 center
                 sprite
                 transform

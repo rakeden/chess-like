@@ -20,7 +20,7 @@ const Square = ({ position, color, row, col, isHovered, size = 1 }) => {
     if (baseRef.current) {
       if (isHovered) {
         // Slightly elevate the hovered tile
-        baseRef.current.position.y = 0.02;
+        baseRef.current.position.y = 0.01;
       } else {
         // Return to normal position when not hovered
         baseRef.current.position.y = 0;
@@ -37,7 +37,7 @@ const Square = ({ position, color, row, col, isHovered, size = 1 }) => {
         receiveShadow
         userData={{ isCell: true, row, col }}
       >
-        <boxGeometry args={[size, 0.1, size]} />
+        <boxGeometry args={[size, 0.05, size]} />
         <meshStandardMaterial 
           color={color} 
           emissive={isHovered ? color : '#000000'} 
@@ -49,7 +49,7 @@ const Square = ({ position, color, row, col, isHovered, size = 1 }) => {
       {isHovered && (
         <mesh 
           ref={glowRef}
-          position={[position[0], position[1] + 0.06, position[2]]}
+          position={[position[0], position[1] + 0.03, position[2]]}
           userData={{ isCell: true, row, col }}
         >
           <boxGeometry args={[size * 1.05, 0.01, size * 1.05]} />

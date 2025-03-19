@@ -172,7 +172,7 @@ export default function Piece({
         // Snap the piece to the center of the cell
         groupRef.current.position.x = centerX;
         groupRef.current.position.z = centerZ;
-        groupRef.current.position.y = 0.5; // Keep consistent height
+        groupRef.current.position.y = 0.1; // Adjusted height to match the new board level
         
         onDragEnd(e, {
           cellData,

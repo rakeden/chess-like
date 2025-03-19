@@ -1090,3 +1090,43 @@ Adjust the scaling factor to 12 for all chess pieces to ensure consistency acros
 - Consider adjusting camera distance if needed
 - Monitor performance with the larger scale factor
 - Test piece interactions at the new scale
+
+## Board Base Removal and Height Adjustment
+
+### User Request
+Remove the wooden board base and adjust all components to work at ground level.
+
+### Actions Taken
+1. Board Component Update:
+   - Removed the wooden board base mesh entirely
+   - Adjusted the `mapPositionToBoard` function to use y=0.1 instead of y=0.5
+   - Reduced the floating animation amplitude from 0.05 to 0.02 for subtler effect
+
+2. Square Component Enhancement:
+   - Reduced square thickness from 0.1 to 0.05 units
+   - Adjusted hover effect elevation from 0.02 to 0.01 units
+   - Modified highlight effect position to match new square height
+
+3. Piece Positioning:
+   - Updated `handleDragEnd` in Piece component to use y=0.1 (instead of 0.5)
+   - Adjusted piece placement to sit properly on the thinner board
+   - Maintained consistent drag and drop functionality
+
+4. Coordinate Labels:
+   - Updated HTML coordinate labels position to y=0.005 (instead of 0.01)
+   - Preserved visibility while adjusting to the new board height
+
+5. Selection Area Adjustment:
+   - Lowered ThreeDPieceSelection component to y=-0.2 (from 0.2)
+   - Maintained proper visual relationship between board and selection area
+
+### Tech Details
+- Created a cleaner, more minimalist board appearance
+- Improved visual aesthetics by removing the bulky base
+- Maintained all game functionality with adjusted heights
+- Ensured consistent piece positioning and interactions
+
+### Next Steps
+- Consider adding subtle shadows for pieces on the board
+- Evaluate lighting changes to complement the new board style
+- Fine-tune camera positioning for optimal view of the flatter board

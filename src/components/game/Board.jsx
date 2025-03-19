@@ -1,53 +1,17 @@
-import { useRef, useEffect, useMemo, useState } from 'react'
+import { useRef, useEffect, useMemo } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { useGameContext } from '@/lib/game-context'
+import useRaycaster from '@/lib/useRaycaster'
 import * as THREE from 'three'
 import Piece from './Piece'
+import Square from './Square'
 
 const BOARD_SIZE = 5
 const SQUARE_SIZE = 1
 const BOARD_OFFSET = (BOARD_SIZE * SQUARE_SIZE) / 2 - SQUARE_SIZE / 2
 
-function Square({ position, color, row, col, isHovered }) {
-  // Add a subtle glow effect when hovered during preparation
-  const glowRef = useRef();
-  
-  // Add animation for the glow
-  useFrame(({ clock }) => {
-    if (glowRef.current && isHovered) {
-      glowRef.current.scale.setScalar(1 + Math.sin(clock.getElapsedTime() * 3) * 0.05);
-    }
-  });
-  
-  return (
-    <group>
-      <mesh 
-        position={position} 
-        receiveShadow
-        userData={{ isCell: true, row, col }}
-      >
-        <boxGeometry args={[SQUARE_SIZE, 0.1, SQUARE_SIZE]} />
-        <meshStandardMaterial color={color} />
-      </mesh>
-      
-      {/* Add highlight effect for valid drop zones */}
-      {isHovered && (
-        <mesh 
-          ref={glowRef}
-          position={[position[0], position[1] + 0.06, position[2]]}
-          userData={{ isCell: true, row, col }}
-        >
-          <boxGeometry args={[SQUARE_SIZE * 1.05, 0.01, SQUARE_SIZE * 1.05]} />
-          <meshBasicMaterial color={0x00ff00} transparent opacity={0.5} />
-        </mesh>
-      )}
-    </group>
-  )
-}
-
 export default function Board() {
-  const { scene, raycaster, camera, gl } = useThree();
-  const [hoveredCell, setHoveredCell] = useState(null);
+  const { gl } = useThree();
   
   // Get data from context
   const context = useGameContext();
@@ -63,10 +27,20 @@ export default function Board() {
       PREPARATION: 'preparation',
       PLAYING: 'playing',
       GAME_OVER: 'gameOver'
-    }
+    },
+    selectPiece: context?.selectPiece || (() => {}),
+    selectCell: context?.selectCell || (() => {})
   };
   
-  const { pieces, playerColor, opponentPieces, gamePhase, GAME_PHASES } = safeContext;
+  const { 
+    pieces, 
+    playerColor, 
+    opponentPieces, 
+    gamePhase, 
+    GAME_PHASES,
+    selectPiece,
+    selectCell
+  } = safeContext;
   
   // Debug the values we're using
   console.log("Board using:", {
@@ -76,39 +50,36 @@ export default function Board() {
     gamePhase
   });
   
-  const boardRef = useRef();
-
-  // Add raycasting to detect hovered cells during preparation
+  // Use the raycaster hook to detect hovering over pieces and cells
+  const { hoveredCell, hoveredPiece } = useRaycaster({
+    types: ['cell', 'piece'],
+    gamePhase,
+    allowedPhases: [GAME_PHASES.PREPARATION, GAME_PHASES.PLAYING]
+  });
+  
+  // Add click handler for the canvas
   useEffect(() => {
-    if (gamePhase !== GAME_PHASES.PREPARATION) return;
-    
-    const canvas = gl.domElement;
-    
-    const handleMouseMove = (event) => {
-      const x = (event.clientX / window.innerWidth) * 2 - 1;
-      const y = -(event.clientY / window.innerHeight) * 2 + 1;
+    const handleClick = () => {
+      // If we have a hovered piece during the playing phase, select it
+      if (gamePhase === GAME_PHASES.PLAYING && hoveredPiece) {
+        selectPiece(hoveredPiece.id);
+      }
       
-      raycaster.setFromCamera({ x, y }, camera);
-      const intersects = raycaster.intersectObjects(scene.children, true);
-      
-      const cellIntersect = intersects.find(intersect => 
-        intersect.object.userData && intersect.object.userData.isCell
-      );
-      
-      if (cellIntersect) {
-        const { row, col } = cellIntersect.object.userData;
-        setHoveredCell({ row, col });
-      } else {
-        setHoveredCell(null);
+      // If we have a hovered cell during preparation or playing, select it
+      if ((gamePhase === GAME_PHASES.PREPARATION || gamePhase === GAME_PHASES.PLAYING) && hoveredCell) {
+        selectCell(hoveredCell.row, hoveredCell.col);
       }
     };
     
-    canvas.addEventListener('mousemove', handleMouseMove);
+    const canvas = gl.domElement;
+    canvas.addEventListener('click', handleClick);
     
     return () => {
-      canvas.removeEventListener('mousemove', handleMouseMove);
+      canvas.removeEventListener('click', handleClick);
     };
-  }, [gamePhase, GAME_PHASES.PREPARATION, gl, raycaster, scene, camera]);
+  }, [gl, gamePhase, GAME_PHASES, hoveredCell, hoveredPiece, selectPiece, selectCell]);
+  
+  const boardRef = useRef();
   
   // Rotate board if player is black
   useEffect(() => {
@@ -167,10 +138,12 @@ export default function Board() {
         Array.from({ length: 5 }).map((_, col) => {
           const isLight = (row + col) % 2 === 0;
           const position = [col - 2, 0, row - 2];
+          
+          // Check if this cell is hovered
           const isHovered = hoveredCell && 
             hoveredCell.row === row && 
             hoveredCell.col === col && 
-            gamePhase === GAME_PHASES.PREPARATION;
+            (gamePhase === GAME_PHASES.PREPARATION || gamePhase === GAME_PHASES.PLAYING);
           
           return (
             <Square
@@ -180,6 +153,7 @@ export default function Board() {
               row={row}
               col={col}
               isHovered={isHovered}
+              size={SQUARE_SIZE}
             />
           );
         })
@@ -189,9 +163,13 @@ export default function Board() {
       {Array.isArray(piecesToRender) && piecesToRender.map((piece, index) => {
         if (!piece) return null;
         
+        // Check if this piece is hovered
+        const isHovered = hoveredPiece && hoveredPiece.id === piece.id;
+        
         return (
           <Piece
             key={`${piece.id || index}-${piece.position ? `${piece.position.row}-${piece.position.col}` : 'hand'}`}
+            id={piece.id || `piece-${index}`}
             type={piece.type || 'pawn'}
             color={piece.color || 'white'}
             value={piece.value || 0}

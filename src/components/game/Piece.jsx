@@ -65,7 +65,8 @@ export default function Piece({
   position = [0, 0, 0], 
   scale = [1, 1, 1], 
   visible = true,
-  value
+  value,
+  id
 }) {
   const meshRef = useRef();
   const hoverRef = useRef(false);
@@ -120,6 +121,15 @@ export default function Piece({
   const safePosition = Array.isArray(position) && position.length >= 3 
     ? position 
     : [0, 0, 0];
+    
+  // Create userData for raycasting
+  const pieceUserData = {
+    isPiece: true,
+    pieceId: id || `piece-${Math.random().toString(36).substr(2, 9)}`,
+    pieceType: type,
+    pieceColor: color,
+    pieceValue: value
+  };
   
   return (
     <group
@@ -128,6 +138,7 @@ export default function Piece({
       ref={meshRef}
       onPointerOver={handlePointerOver}
       onPointerOut={handlePointerOut}
+      userData={pieceUserData}
     >
       {Array.isArray(geometry.children) ? (
         // If the geometry is a group (complex piece)
@@ -136,6 +147,7 @@ export default function Piece({
             key={index}
             position={child.position}
             rotation={child.rotation}
+            userData={pieceUserData}
           >
             <primitive object={child.geometry} attach="geometry" />
             <meshStandardMaterial
@@ -148,7 +160,7 @@ export default function Piece({
         ))
       ) : (
         // If the geometry is a simple mesh
-        <mesh>
+        <mesh userData={pieceUserData}>
           <primitive object={geometry} attach="geometry" />
           <primitive object={material} attach="material" />
         </mesh>

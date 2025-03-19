@@ -682,3 +682,44 @@ Pause the game in preparation phase when dragging pieces and improve the interac
 - Add sound effects for dragging and dropping pieces
 - Consider adding an undo feature for piece placement
 - Improve the automatic king placement logic to find optimal positions
+
+## Three.js Raycasting Implementation
+
+### User Request
+Implement Three.js raycasting to detect hovering over chess pieces and cells on the board.
+
+### Actions Taken
+1. Created a custom raycaster hook for hover detection:
+   - Implemented `useRaycaster.js` as a reusable custom hook
+   - Added configuration for detecting different object types (cells and pieces)
+   - Created game phase filtering to enable/disable raycasting based on current phase
+   - Added state management for tracking hovered elements
+2. Enhanced the Piece component:
+   - Added userData properties for raycasting identification
+   - Included piece-specific metadata (ID, type, color)
+   - Improved hover feedback with scale and animation effects
+   - Properly handled complex piece geometries for accurate detection
+3. Updated the Board component:
+   - Integrated the useRaycaster hook for centralized hover detection
+   - Added click handling for piece and cell selection
+   - Implemented hover state management for visual feedback
+   - Ensured proper event delegation between pieces and cells
+4. Improved the Square component:
+   - Enhanced hover visual effects with glow and elevation
+   - Added emissive materials for better hover highlighting
+   - Implemented subtle animations for hover state changes
+   - Added proper userData for raycasting detection
+
+### Tech Details
+- Used Three.js Raycaster for precise 3D object intersection detection
+- Implemented custom hooks pattern for reusable raycasting logic
+- Added userData to meshes for object identification during raycasting
+- Created smooth animations for hover state transitions
+- Ensured proper event propagation and stopPropagation
+
+### Next Steps
+- Add piece movement validation using raycasting
+- Implement drag-and-drop with raycaster-based positioning
+- Add visual indicators for valid move destinations
+- Enhance raycasting precision for better user experience
+- Implement touch support for mobile devices

@@ -1,6 +1,6 @@
 import { useRef, useEffect, useState, useMemo } from 'react';
 import { useThree, useFrame } from '@react-three/fiber';
-import { Html, DragControls } from '@react-three/drei';
+import { Html } from '@react-three/drei';
 import { useGameContext, PIECE_VALUES } from '@/lib/game-context';
 import Piece from './Piece';
 import * as THREE from 'three';
@@ -8,7 +8,7 @@ import * as THREE from 'three';
 const PIECE_SPACING = 0.8;
 const ROW_HEIGHT = 0.8;
 
-export default function ThreeDPieceSelection({ onDragStart, onDragEnd }) {
+export default function PieceBench({ registerDraggable, isDragging, draggingPiece, onDragStart, onDragEnd }) {
   const { 
     availablePieces, 
     playerColor, 
@@ -25,15 +25,6 @@ export default function ThreeDPieceSelection({ onDragStart, onDragEnd }) {
   const pieceRefs = useRef({});
   
   const [hoveredPiece, setHoveredPiece] = useState(null);
-  const [draggingPiece, setDraggingPiece] = useState(null);
-  const [draggedPieceData, setDraggedPieceData] = useState(null);
-  
-  // Log when hoveredPiece changes
-  useEffect(() => {
-    if (hoveredPiece) {
-      console.log('ThreeDPieceSelection - Hovering piece:', hoveredPiece);
-    }
-  }, [hoveredPiece]);
   
   // Filter pieces to only show player's color and exclude kings
   const playerPieces = useMemo(() => {
@@ -87,7 +78,7 @@ export default function ThreeDPieceSelection({ onDragStart, onDragEnd }) {
     pieceTypesWithCount.forEach((piece, index) => {
       positions[piece.id] = [
         startX + (index * PIECE_SPACING),
-        -0.15, // Position pieces on top of the surface (surface at -0.25 + half height 0.1)
+        -0.05, // Position pieces on top of the surface (surface at -0.05)
         0
       ];
     });
@@ -95,117 +86,32 @@ export default function ThreeDPieceSelection({ onDragStart, onDragEnd }) {
     return positions;
   }, [pieceTypesWithCount, groupedPieces]);
   
-  // Register piece function
+  // Register piece function with DragControlWrapper
   const registerPiece = (id, ref) => {
     if (ref) {
       pieceRefs.current[id] = ref;
-    }
-  };
-  
-  // Get draggable objects for DragControls
-  const draggableObjects = useMemo(() => {
-    return Object.values(pieceRefs.current).filter(ref => ref);
-  }, []);
-
-  // Handle dragstart event
-  const handleDragStart = (e) => {
-    const obj = e.object;
-    document.body.style.cursor = 'grabbing';
-    
-    // Find the piece type
-    const pieceType = pieceTypesWithCount.find(p => p.id === obj.userData.pieceId);
-    
-    if (pieceType) {
-      // Get the first available piece ID of this type
-      const availablePieceId = pieceType.allPieceIds[0];
-      setDraggingPiece(availablePieceId);
       
-      // Store original piece data to use when placing
-      setDraggedPieceData({
-        id: availablePieceId,
-        type: pieceType.type,
-        color: pieceType.color,
-        value: pieceType.value
-      });
-      
-      // Pause preparation timer while dragging
-      pausePreparation();
-      
-      // Call parent's onDragStart callback if provided
-      if (onDragStart) {
-        onDragStart();
+      // Add additional userData for drag controls
+      if (ref.userData) {
+        ref.userData.selectionPiece = true;
+        
+        // Find the piece type data
+        const pieceType = pieceTypesWithCount.find(p => p.id === id);
+        if (pieceType) {
+          // Store data needed during drag operations
+          ref.userData.pieceData = {
+            id: pieceType.allPieceIds[0],
+            type: pieceType.type,
+            color: pieceType.color,
+            value: pieceType.value
+          };
+        }
       }
-    }
-  };
-  
-  // Handle drag event to lock the y-position
-  const handleDrag = (e) => {
-    if (e.object) {
-      e.object.position.y = -0.15;
-      // Apply 5 degree tilt around Y axis while dragging
-      e.object.rotation.y = THREE.MathUtils.degToRad(5);
-    }
-  };
-  
-  // Handle dragend event
-  const handleDragEnd = (e) => {
-    document.body.style.cursor = 'auto';
-    const obj = e.object;
-    
-    // Reset rotation when drag ends
-    obj.rotation.y = 0;
-    
-    if (!draggingPiece || !draggedPieceData) {
-      resumePreparation();
-      if (onDragEnd) onDragEnd();
-      return;
-    }
-    
-    // Use raycasting to find what's under the piece
-    const raycaster = new THREE.Raycaster();
-    
-    // Cast ray down from the piece position
-    const origin = new THREE.Vector3(
-      obj.position.x,
-      obj.position.y + 1,
-      obj.position.z
-    );
-    const direction = new THREE.Vector3(0, -1, 0);
-    raycaster.set(origin, direction);
-    
-    // Find intersections with board cells
-    const intersects = raycaster.intersectObjects(
-      scene.children,
-      true
-    ).filter(hit => hit.object.userData.isCell);
-    
-    if (intersects.length > 0) {
-      const cellData = intersects[0].object.userData;
       
-      // Place the piece if it's a valid cell
-      if (cellData.row !== undefined && cellData.col !== undefined) {
-        placePiece(draggingPiece, { 
-          row: cellData.row, 
-          col: cellData.col 
-        });
+      // Register with DragControlWrapper if available
+      if (registerDraggable) {
+        registerDraggable(id, ref, 'selection');
       }
-    } else {
-      // Reset piece position
-      const pieceType = pieceTypesWithCount.find(p => p.allPieceIds.includes(draggingPiece));
-      if (pieceType && piecePositions[pieceType.id]) {
-        const originalPos = piecePositions[pieceType.id];
-        obj.position.set(originalPos[0], originalPos[1], originalPos[2]);
-      }
-    }
-    
-    // Reset dragging state and resume timer
-    setDraggingPiece(null);
-    setDraggedPieceData(null);
-    resumePreparation();
-    
-    // Call parent's onDragEnd callback if provided
-    if (onDragEnd) {
-      onDragEnd();
     }
   };
 
@@ -223,17 +129,6 @@ export default function ThreeDPieceSelection({ onDragStart, onDragEnd }) {
           />
         </mesh>
       </group>
-      
-      {/* Add declarative DragControls */}
-      {draggableObjects.length > 0 && (
-        <DragControls
-          transformGroup
-          args={[draggableObjects, camera, gl.domElement]}
-          onDragStart={handleDragStart}
-          onDrag={handleDrag}
-          onDragEnd={handleDragEnd}
-        />
-      )}
       
       {/* Title for the selection area */}
       <Html
@@ -257,7 +152,7 @@ export default function ThreeDPieceSelection({ onDragStart, onDragEnd }) {
       {pieceTypesWithCount.map((piece) => {
         const position = piecePositions[piece.id] || [0, 0, 0];
         const isHovered = hoveredPiece === piece.id;
-        const isDragging = draggingPiece === piece.id;
+        const isBeingDragged = draggingPiece && piece.allPieceIds.includes(draggingPiece);
         
         return (
           <group 
@@ -280,7 +175,7 @@ export default function ThreeDPieceSelection({ onDragStart, onDragEnd }) {
               id={piece.id}
               position={position}
               registerPiece={registerPiece}
-              isBeingDragged={draggingPiece === piece.id}
+              isBeingDragged={isBeingDragged}
               isDraggable={true}
               isHovered={isHovered}
             />

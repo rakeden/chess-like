@@ -80,7 +80,7 @@ export default function useRaycaster({
         if (cellIntersect) {
           const { row, col } = cellIntersect.object.userData;
           setHoveredCell({ row, col });
-          console.log(`Raycaster detected cell at row ${row}, col ${col}`);
+          // console.log(`Raycaster detected cell at row ${row}, col ${col}`);
         } else {
           setHoveredCell(null);
         }

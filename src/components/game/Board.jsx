@@ -12,12 +12,6 @@ const BOARD_SIZE = 5
 const SQUARE_SIZE = 1
 const BOARD_OFFSET = (BOARD_SIZE * SQUARE_SIZE) / 2 - SQUARE_SIZE / 2
 
-// Helper function to get chess coordinate notation
-const getChessCoordinate = (row, col) => {
-  const letters = ['E', 'D', 'C', 'B', 'A']; // Reversed to have A at the bottom for white
-  return `${letters[row]}${col + 1}`;
-};
-
 // Helper function to map row/col to 3D position
 const mapPositionToBoard = (row, col) => {
   // Adjust position to center the piece on a square
@@ -255,25 +249,6 @@ export default function Board() {
                 isHovered={isHovered}
                 size={SQUARE_SIZE}
               />
-              {/* Coordinate label */}
-              <Html
-                position={[position[0], 0.005, position[2]]}
-                center
-                sprite
-                transform
-                scale={0.15}
-                style={{
-                  color: isLight ? '#b58863' : '#f0d9b5',
-                  fontFamily: 'monospace',
-                  fontSize: '10px',
-                  fontWeight: 'bold',
-                  userSelect: 'none',
-                  pointerEvents: 'none',
-                  opacity: 0.8
-                }}
-              >
-                {getChessCoordinate(row, col)}
-              </Html>
             </group>
           );
         })

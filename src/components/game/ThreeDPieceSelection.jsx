@@ -261,18 +261,6 @@ export default function ThreeDPieceSelection({ onDragStart, onDragEnd }) {
               id={piece.id}
             />
             
-            {/* Show glow effect when hovered */}
-            {hoveredPiece === piece.id && !draggingPiece && (
-              <mesh position={[0, 0.1, 0]}>
-                <circleGeometry args={[0.45, 16]} />
-                <meshBasicMaterial 
-                  color={0xffff00}
-                  transparent={true}
-                  opacity={0.5}
-                />
-              </mesh>
-            )}
-            
             {/* Show available count */}
             <Html
               position={[0, -0.5, 0]}

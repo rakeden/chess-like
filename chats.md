@@ -801,3 +801,38 @@ Improve piece selection to prioritize the piece closest to the camera when piece
 - Consider adding depth-based selection indicators
 - Add haptic feedback for mobile users when selecting pieces
 - Optimize performance for scenes with many overlapping pieces
+
+## Piece Animation and Hover Effect Enhancement
+
+### User Request
+Replace the bounce animation with double rotation and ease-out growth, and remove the yellow hover rings on pieces.
+
+### Actions Taken
+1. Animation Overhaul:
+   - Removed the bounce animation effect for pieces
+   - Implemented a smooth double rotation animation (two full 360° rotations)
+   - Added ease-out growth animation using a quadratic ease-out function
+   - Shortened the animation duration for a quicker, more dynamic appearance
+2. Visual Feedback Enhancement:
+   - Removed the yellow circular glow effect from hovered pieces
+   - Maintained cursor feedback for draggable pieces (grab/grabbing)
+   - Simplified the visual feedback system for a cleaner appearance
+   - Removed the hover-based scale increase for a more consistent piece size
+3. Code Optimization:
+   - Replaced bounceEasing function with simpler easeOutQuad function
+   - Optimized the animation logic for smoother performance
+   - Removed unnecessary hover-based scale adjustments
+   - Simplified visual feedback to focus on the gameplay
+
+### Tech Details
+- Implemented rotation animation using `meshRef.current.rotation.y = 4 * Math.PI * easeOutQuad(progress)`
+- Created quadratic ease-out function: `const easeOutQuad = (t) => { return 1 - (1 - t) * (1 - t); }`
+- Removed hover glow effect from ThreeDPieceSelection component
+- Maintained opacity-based fade-in for a subtle appearance effect
+
+### Next Steps
+- Consider adding subtle particle effects for piece placement
+- Evaluate animation performance on lower-end devices
+- Add subtle sound effects synchronized with the rotation animation
+- Fine-tune the ease-out timing for optimal visual appeal
+- Consider adding color-based glow effects for valid/invalid placements

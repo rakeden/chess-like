@@ -74,6 +74,11 @@ const bounceEasing = (t) => {
   }
 };
 
+// Ease out function
+const easeOutQuad = (t) => {
+  return 1 - (1 - t) * (1 - t);
+};
+
 export default function Piece({ 
   type = 'pawn', 
   color = 'white', 
@@ -140,12 +145,17 @@ export default function Piece({
     const progress = Math.min(elapsedTime / animationDuration, 1);
     
     // Calculate the new opacity value - linear fade in
-    const newOpacity = Math.min(progress * 1.5, 1); // Fade in slightly faster than the bounce
+    const newOpacity = Math.min(progress * 1.5, 1); // Fade in slightly faster than the rotation
     setOpacity(newOpacity);
     
-    // Calculate scale with bounce effect
-    const bounceScale = progress >= 1 ? 1 : bounceEasing(progress);
-    setAnimScale(bounceScale);
+    // Apply ease out scale effect
+    const easedScale = progress >= 1 ? 1 : easeOutQuad(progress);
+    setAnimScale(easedScale);
+    
+    // Apply rotation (2 full rotations = 4π radians) with ease out
+    if (progress < 1) {
+      meshRef.current.rotation.y = 4 * Math.PI * easeOutQuad(progress);
+    }
     
     // For complex pieces (groups), manually update each child's material
     if (Array.isArray(geometry.children) && meshRef.current.children.length > 0) {
@@ -158,17 +168,14 @@ export default function Piece({
     
     // Handle hover effect - only after animation completes
     if (progress >= 1) {
-      if (hoverRef.current) {
-        meshRef.current.scale.setScalar(1.1); // Scale up when hovered
-      } else {
-        meshRef.current.scale.setScalar(1);
-      }
+      // Set scale to 1 (normal size) once animation is complete
+      meshRef.current.scale.setScalar(1);
     } else {
-      // During animation, apply the bounce scale
+      // During animation, apply the eased scale
       const baseScale = Array.isArray(scale) && scale.length >= 3 
         ? Math.max(scale[0], scale[1], scale[2]) 
         : 1;
-      meshRef.current.scale.setScalar(baseScale * bounceScale);
+      meshRef.current.scale.setScalar(baseScale * easedScale);
     }
     
     // Add a subtle floating animation (only if not being dragged)

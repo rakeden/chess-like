@@ -637,3 +637,48 @@ Refactor the `PuzzleSelection` and `PuzzleGame` components into separate pages w
 - Consider adding query parameters for configuration options
 - Create a 404 page for invalid puzzle IDs
 - Add animated transitions between routes
+
+## DragControls Implementation and Preparation Timer Pause
+
+### User Request
+Pause the game in preparation phase when dragging pieces and improve the interactivity using DragControls from Three.js.
+
+### Actions Taken
+1. DragControls Integration:
+   - Replaced custom raycasting with Three.js DragControls for piece interaction
+   - Added refs to track draggable pieces in the scene
+   - Implemented event handlers for drag start, end, and hover effects
+   - Created a more accurate and responsive dragging experience
+2. Preparation Timer Pause Functionality:
+   - Added pause/resume methods to the game context
+   - Updated the preparation timer to pause during piece placement
+   - Added visual indicators for the paused state
+   - Prevented timer from advancing while pieces are being placed
+3. Game Context Enhancement:
+   - Added isPreparationPaused state to track dragging status
+   - Modified the timer effect to respect the paused state
+   - Added pausePreparation and resumePreparation functions
+   - Ensured proper timer behavior when interaction stops
+4. Drag Placement Optimization:
+   - Improved the accuracy of piece placement with raycasting
+   - Added visual feedback during the placement process
+   - Ensured pieces return to original positions if not placed on a valid cell
+   - Auto-resumed the timer after piece placement
+5. Automatic King Placement:
+   - Added automatic placement of the king at game start
+   - Positioned the king at a strategic location on the player's side of the board
+   - Ensured the king is not available in the piece selection
+
+### Tech Details
+- Used `DragControls` from `@react-three/drei` for improved drag interactions
+- Implemented Three.js raycasting for accurate board cell detection
+- Modified the game context to support timer pausing and resuming
+- Added user feedback during the drag operation
+- Enhanced the PreparationTimer component to display the paused state
+
+### Next Steps
+- Add visual effects for piece placement success/failure
+- Implement additional feedback for invalid placement attempts
+- Add sound effects for dragging and dropping pieces
+- Consider adding an undo feature for piece placement
+- Improve the automatic king placement logic to find optimal positions

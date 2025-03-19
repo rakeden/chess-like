@@ -61,6 +61,7 @@ export function GameProvider({ children }) {
   const [preparationTimeLeft, setPreparationTimeLeft] = useState(60);
   const [timerActive, setTimerActive] = useState(false);
   const [currentPuzzle, setCurrentPuzzle] = useState(null);
+  const [isPreparationPaused, setIsPreparationPaused] = useState(false);
   
   // Generate available pieces based on player color
   const generatePieces = useCallback((color) => [
@@ -99,10 +100,25 @@ export function GameProvider({ children }) {
     resetGame(color);
   }
 
+  // Functions to pause and resume preparation timer
+  const pausePreparation = useCallback(() => {
+    if (gamePhase === GAME_PHASES.PREPARATION) {
+      setIsPreparationPaused(true);
+      setTimerActive(false);
+    }
+  }, [gamePhase]);
+  
+  const resumePreparation = useCallback(() => {
+    if (gamePhase === GAME_PHASES.PREPARATION) {
+      setIsPreparationPaused(false);
+      setTimerActive(true);
+    }
+  }, [gamePhase]);
+
   // Preparation phase timer
   useEffect(() => {
     let timer;
-    if (timerActive && gamePhase === GAME_PHASES.PREPARATION && preparationTimeLeft > 0) {
+    if (timerActive && gamePhase === GAME_PHASES.PREPARATION && preparationTimeLeft > 0 && !isPreparationPaused) {
       timer = setInterval(() => {
         setPreparationTimeLeft(prev => prev - 1);
       }, 1000);
@@ -115,7 +131,7 @@ export function GameProvider({ children }) {
     return () => {
       if (timer) clearInterval(timer);
     };
-  }, [timerActive, preparationTimeLeft, gamePhase, playerColor]);
+  }, [timerActive, preparationTimeLeft, gamePhase, playerColor, isPreparationPaused]);
   
   // Reset the game state and return to menu - define this first
   const resetGame = useCallback(() => {
@@ -128,6 +144,7 @@ export function GameProvider({ children }) {
     setGamePhase(GAME_PHASES.MENU);
     setPreparationTimeLeft(60);
     setTimerActive(false);
+    setIsPreparationPaused(false);
     setCurrentTurn('white');
   }, [generatePieces]);
   
@@ -182,13 +199,28 @@ export function GameProvider({ children }) {
         };
       });
       
-      // Set up the board with opponent pieces
+      // Automatically place player's king on the board
+      const playerKing = { id: `king-1-${color}`, type: 'king', color, value: PIECE_VALUES.king };
+      
+      // Try to place the king in the center of the player's side (row 4, col 2)
+      const kingPosition = { row: 4, col: 2 };
+      
+      // Check if the position is available
+      if (!newBoard[kingPosition.row][kingPosition.col]) {
+        newBoard[kingPosition.row][kingPosition.col] = playerKing;
+        
+        // Add king to pieces array with position
+        const kingWithPosition = { ...playerKing, position: kingPosition };
+        setPieces([kingWithPosition]);
+        setSelectedPieces([playerKing]);
+      }
+      
+      // Set up the board with opponent pieces and player's king
       setBoard(newBoard);
       
-      // Reset player's pieces
-      setPieces([]);
-      setSelectedPieces([]);
-      setAvailablePieces(generatePieces(color));
+      // Remove king from available pieces
+      const availablePiecesWithoutKing = generatePieces(color).filter(p => p.type !== 'king');
+      setAvailablePieces(availablePiecesWithoutKing);
       
       // Set the current puzzle
       setCurrentPuzzle(puzzleData);
@@ -197,6 +229,7 @@ export function GameProvider({ children }) {
       setGamePhase(GAME_PHASES.PREPARATION);
       setPreparationTimeLeft(60); // Reset to 60 seconds
       setTimerActive(true);
+      setIsPreparationPaused(false);
     } catch (error) {
       console.error("Error in startPuzzle:", error);
       // Reset game state to menu to avoid broken state
@@ -395,6 +428,7 @@ export function GameProvider({ children }) {
       currentTurn,
       preparationTimeLeft,
       timerActive,
+      isPreparationPaused,
       currentPuzzle,
       stage,
       selectedPiecesValue,
@@ -411,6 +445,8 @@ export function GameProvider({ children }) {
       setGamePhase,
       setTimerActive,
       setPlayerTurn,
+      pausePreparation,
+      resumePreparation,
     }}>
       {children}
     </GameContext.Provider>

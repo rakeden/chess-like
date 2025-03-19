@@ -9,7 +9,10 @@ export function PreparationTimer() {
     preparationTimeLeft, 
     finishPreparation, 
     GAME_PHASES, 
-    gamePhase
+    gamePhase,
+    isPreparationPaused,
+    pausePreparation,
+    resumePreparation
   } = useGameContext();
   
   // Calculate progress percentage
@@ -38,23 +41,30 @@ export function PreparationTimer() {
     <Card className="absolute top-4 right-4 z-10 w-64">
       <CardContent className="p-4">
         <div className="flex items-center justify-between mb-2">
-          <h3 className="font-bold text-lg">Preparation Phase</h3>
-          <span className="text-xl font-mono font-bold">{formatTime(preparationTimeLeft)}</span>
+          <h3 className="font-bold text-lg">
+            {isPreparationPaused ? 'Paused' : 'Preparation Phase'}
+          </h3>
+          <span className={`text-xl font-mono font-bold ${isPreparationPaused ? 'text-amber-500' : ''}`}>
+            {formatTime(preparationTimeLeft)}
+          </span>
         </div>
         
         <Progress 
           value={timePercentage} 
           className="h-2 mb-4"
-          indicatorClassName={getColorClass()}
+          indicatorClassName={isPreparationPaused ? 'bg-amber-500' : getColorClass()}
         />
         
         <p className="text-sm text-muted-foreground mb-3">
-          Place your pieces on the board before the timer ends.
+          {isPreparationPaused 
+            ? 'Timer paused while placing piece.' 
+            : 'Place your pieces on the board before the timer ends.'}
         </p>
         
         <Button 
           onClick={finishPreparation}
           className="w-full"
+          disabled={isPreparationPaused}
         >
           Ready
         </Button>

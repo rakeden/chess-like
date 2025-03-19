@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState, useMemo } from 'react';
-import { useThree } from '@react-three/fiber';
+import { useThree, useFrame } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import { useGameContext, PIECE_VALUES } from '@/lib/game-context';
 import Piece from './Piece';
@@ -14,15 +14,21 @@ export default function ThreeDPieceSelection() {
     playerColor, 
     placePiece,
     selectedPiecesValue,
-    currentMaxValue
+    currentMaxValue,
+    pausePreparation,
+    resumePreparation,
+    isPreparationPaused
   } = useGameContext();
   
-  const { scene, camera, raycaster, mouse, gl } = useThree();
+  const { scene, camera, gl } = useThree();
   const groupRef = useRef();
+  const piecesRef = useRef([]);
+  
   const [hoveredPiece, setHoveredPiece] = useState(null);
-  const [selectedPiece, setSelectedPiece] = useState(null);
   const [draggingPiece, setDraggingPiece] = useState(null);
-  const [dragPosition, setDragPosition] = useState([0, 0, 0]);
+  const [draggedPieceData, setDraggedPieceData] = useState(null);
+  const [activeDragObject, setActiveDragObject] = useState(null);
+  const [startDragPosition, setStartDragPosition] = useState(null);
   
   // Filter pieces to only show player's color and exclude kings
   const playerPieces = useMemo(() => {
@@ -80,139 +86,173 @@ export default function ThreeDPieceSelection() {
     
     return positions;
   }, [pieceTypesWithCount, groupedPieces]);
+
+  // Handle drag start
+  const handleDragStart = (event, pieceId) => {
+    // Find the piece type that was clicked
+    const pieceType = pieceTypesWithCount.find(p => p.id === pieceId);
+    
+    if (pieceType && pieceType.count > 0) {
+      // Get the first available piece ID of this type
+      const availablePieceId = pieceType.allPieceIds[0];
+      setDraggingPiece(availablePieceId);
+      
+      // Store original piece data to use when placing
+      setDraggedPieceData({
+        id: availablePieceId,
+        type: pieceType.type,
+        color: pieceType.color,
+        value: pieceType.value
+      });
+      
+      // Navigate up to find the parent group that contains the piece
+      let current = event.object;
+      while (current && !current.userData.pieceId) {
+        current = current.parent;
+      }
+      
+      // Store reference to the group containing the piece for dragging
+      if (current) {
+        setActiveDragObject(current);
+        setStartDragPosition([...piecePositions[pieceId]]);
+      }
+      
+      // Pause preparation timer while dragging
+      pausePreparation();
+    }
+  };
   
-  // Move these handlers inside useEffect
+  // Handle drag end
+  const handleDragEnd = (event) => {
+    if (!draggingPiece || !draggedPieceData || !activeDragObject) {
+      resumePreparation();
+      return;
+    }
+    
+    // Get the position of the dropped piece in 3D space
+    const position = activeDragObject.position.clone();
+    
+    // Project the 3D position onto the board
+    const raycaster = new THREE.Raycaster();
+    const direction = new THREE.Vector3(0, -1, 0); // Look downward to find the board
+    raycaster.set(position, direction);
+    
+    // Find board cells
+    const boardCells = [];
+    scene.traverse((object) => {
+      if (object.userData && object.userData.isCell) {
+        boardCells.push(object);
+      }
+    });
+    
+    // Check for intersection with board cells
+    const intersects = raycaster.intersectObjects(boardCells, true);
+    
+    if (intersects.length > 0) {
+      // Get the first intersection
+      const intersection = intersects[0];
+      const cellData = intersection.object.userData;
+      
+      // Place the piece if it's a valid cell
+      if (cellData.row !== undefined && cellData.col !== undefined) {
+        placePiece(draggingPiece, { 
+          row: cellData.row, 
+          col: cellData.col 
+        });
+      }
+    }
+    
+    // Reset the piece position
+    if (activeDragObject && startDragPosition) {
+      activeDragObject.position.set(
+        startDragPosition[0],
+        startDragPosition[1],
+        startDragPosition[2]
+      );
+    }
+    
+    // Reset dragging state and resume timer
+    setDraggingPiece(null);
+    setDraggedPieceData(null);
+    setActiveDragObject(null);
+    setStartDragPosition(null);
+    resumePreparation();
+  };
+
+  // Set up pointer events for dragging
   useEffect(() => {
     if (!groupRef.current || !gl) return;
     
     const canvas = gl.domElement;
-    let isMouseDown = false;
     
-    // Handle pointer move to detect hovering over pieces
+    // Handle hover effects
     const handlePointerMove = (event) => {
       // Convert mouse coordinates to normalized device coordinates
       const x = (event.clientX / window.innerWidth) * 2 - 1;
       const y = -(event.clientY / window.innerHeight) * 2 + 1;
       
-      // Update raycaster with mouse position
-      raycaster.setFromCamera({ x, y }, camera);
-      
-      // If we're dragging a piece, update its position
-      if (draggingPiece) {
-        // Get a point in 3D space from the camera through the mouse position
-        const planeZ = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
-        const targetPosition = new THREE.Vector3();
-        raycaster.ray.intersectPlane(planeZ, targetPosition);
+      // If dragging, update the position of the dragged piece
+      if (draggingPiece && activeDragObject) {
+        // Create a plane at the camera's near plane parallel to the view
+        const planeZ = -4; // Same Z as our group
+        const mouseRaycaster = new THREE.Raycaster();
+        mouseRaycaster.setFromCamera({ x, y }, camera);
         
-        // Update the drag position
-        setDragPosition([targetPosition.x, targetPosition.y, -3]);
+        // Create a plane to intersect with
+        const plane = new THREE.Plane(new THREE.Vector3(0, 0, 1), -planeZ);
+        const targetPosition = new THREE.Vector3();
+        
+        // Find the intersection point of the ray with the plane
+        mouseRaycaster.ray.intersectPlane(plane, targetPosition);
+        
+        // Update the position of the dragged object
+        activeDragObject.position.set(targetPosition.x, targetPosition.y, targetPosition.z);
         return;
       }
       
-      // Find intersections with piece meshes
-      const intersects = raycaster.intersectObjects(scene.children, true);
+      // Only proceed with hover effects when not dragging
+      if (draggingPiece) return;
       
-      // Check if we're hovering over a piece
-      const hoveredObject = intersects.find(intersect => {
-        // Walk up the parent chain to find the piece group
-        let current = intersect.object;
-        while (current && current !== scene) {
-          // Check if this is one of our piece groups with userData.pieceId
-          if (current.userData && current.userData.pieceId) {
-            return true;
-          }
+      // Update raycaster with mouse position
+      const raycaster = new THREE.Raycaster();
+      raycaster.setFromCamera({ x, y }, camera);
+      
+      // Find intersections with objects
+      const intersects = raycaster.intersectObjects(piecesRef.current, true);
+      
+      if (intersects.length > 0) {
+        const hoveredObject = intersects[0].object;
+        let current = hoveredObject;
+        
+        // Walk up the parent chain to find our group
+        while (current && !current.userData.pieceId) {
           current = current.parent;
         }
-        return false;
-      });
-      
-      if (hoveredObject) {
-        // Find the piece group with userData
-        let current = hoveredObject.object;
-        while (current && current !== scene) {
-          if (current.userData && current.userData.pieceId) {
-            setHoveredPiece(current.userData.pieceId);
-            gl.domElement.style.cursor = 'grab';
-            break;
-          }
-          current = current.parent;
+        
+        if (current && current.userData.pieceId) {
+          setHoveredPiece(current.userData.pieceId);
+          canvas.style.cursor = 'grab';
+        } else {
+          setHoveredPiece(null);
+          canvas.style.cursor = 'auto';
         }
       } else {
         setHoveredPiece(null);
-        gl.domElement.style.cursor = 'auto';
-      }
-    };
-    
-    // Handle mouse down to start dragging
-    const handleMouseDown = (event) => {
-      isMouseDown = true;
-      
-      if (hoveredPiece) {
-        // Find the piece type that was clicked
-        const hoveredPieceType = pieceTypesWithCount.find(p => p.id === hoveredPiece);
-        
-        if (hoveredPieceType && hoveredPieceType.count > 0) {
-          // Get the first available piece ID of this type
-          const availablePieceId = hoveredPieceType.allPieceIds[0];
-          setDraggingPiece(availablePieceId);
-          gl.domElement.style.cursor = 'grabbing';
-          
-          // Set initial drag position
-          const x = (event.clientX / window.innerWidth) * 2 - 1;
-          const y = -(event.clientY / window.innerHeight) * 2 + 1;
-          raycaster.setFromCamera({ x, y }, camera);
-          
-          const planeZ = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
-          const targetPosition = new THREE.Vector3();
-          raycaster.ray.intersectPlane(planeZ, targetPosition);
-          
-          setDragPosition([targetPosition.x, targetPosition.y, -3]);
-        }
-      }
-    };
-    
-    // Handle mouse up to stop dragging and potentially place a piece
-    const handleMouseUp = (event) => {
-      isMouseDown = false;
-      
-      if (draggingPiece) {
-        // Convert mouse coordinates to normalized device coordinates
-        const x = (event.clientX / window.innerWidth) * 2 - 1;
-        const y = -(event.clientY / window.innerHeight) * 2 + 1;
-        
-        // Update raycaster with mouse position
-        raycaster.setFromCamera({ x, y }, camera);
-        
-        // Find intersections with board cells
-        const intersects = raycaster.intersectObjects(scene.children, true);
-        
-        // Check if we're dropping on a board cell
-        const boardIntersect = intersects.find(intersect => {
-          // Check if this is one of the board cells
-          return intersect.object.userData && intersect.object.userData.isCell;
-        });
-        
-        if (boardIntersect) {
-          const { row, col } = boardIntersect.object.userData;
-          placePiece(draggingPiece, { row, col });
-        }
-        
-        // Reset dragging state
-        setDraggingPiece(null);
-        gl.domElement.style.cursor = hoveredPiece ? 'grab' : 'auto';
+        canvas.style.cursor = 'auto';
       }
     };
     
     canvas.addEventListener('pointermove', handlePointerMove);
-    canvas.addEventListener('mousedown', handleMouseDown);
-    canvas.addEventListener('mouseup', handleMouseUp);
     
     return () => {
       canvas.removeEventListener('pointermove', handlePointerMove);
-      canvas.removeEventListener('mousedown', handleMouseDown);
-      canvas.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [hoveredPiece, draggingPiece, gl, raycaster, scene, camera, placePiece, pieceTypesWithCount]);
+  }, [camera, draggingPiece, activeDragObject, gl, piecesRef]);
+  
+  // Update refs when pieces change
+  useEffect(() => {
+    piecesRef.current = [];
+  }, [pieceTypesWithCount]);
   
   return (
     <group ref={groupRef} position={[0, 0, -4]}>
@@ -224,7 +264,37 @@ export default function ThreeDPieceSelection() {
           <group 
             key={piece.id}
             position={position}
-            userData={{ pieceId: piece.id }}
+            userData={{ 
+              pieceId: piece.id,
+              pieceType: piece.type,
+              pieceColor: piece.color
+            }}
+            ref={(el) => {
+              if (el) piecesRef.current.push(el);
+            }}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (!draggingPiece) {
+                handleDragStart(e, piece.id);
+              }
+            }}
+            onPointerDown={(e) => {
+              e.stopPropagation();
+              if (!draggingPiece) {
+                handleDragStart(e, piece.id);
+              }
+            }}
+            onPointerUp={(e) => {
+              e.stopPropagation();
+              if (draggingPiece) {
+                handleDragEnd(e);
+              }
+            }}
+            onPointerMissed={() => {
+              if (draggingPiece) {
+                handleDragEnd({});
+              }
+            }}
           >
             <Piece
               type={piece.type}
@@ -235,7 +305,7 @@ export default function ThreeDPieceSelection() {
             />
             
             {/* Show glow effect when hovered */}
-            {hoveredPiece === piece.id && (
+            {hoveredPiece === piece.id && !draggingPiece && (
               <mesh position={[0, 0.1, 0]}>
                 <circleGeometry args={[0.5, 16]} />
                 <meshBasicMaterial 
@@ -267,25 +337,33 @@ export default function ThreeDPieceSelection() {
         );
       })}
       
-      {/* Render the piece being dragged */}
-      {draggingPiece && (
-        <group position={dragPosition}>
-          {playerPieces.map((piece) => {
-            if (piece.id === draggingPiece) {
-              return (
-                <Piece
-                  key={piece.id}
-                  type={piece.type}
-                  color={piece.color}
-                  value={piece.value}
-                  scale={[0.7, 0.7, 0.7]}
-                  visible={true}
-                />
-              );
-            }
-            return null;
-          })}
+      {/* Render the piece being dragged as a duplicate */}
+      {draggingPiece && draggedPieceData && activeDragObject && (
+        <group position={activeDragObject.position.toArray()}>
+          <Piece
+            type={draggedPieceData.type}
+            color={draggedPieceData.color}
+            value={draggedPieceData.value}
+            scale={[0.7, 0.7, 0.7]}
+            visible={true}
+          />
         </group>
+      )}
+      
+      {/* Show preparation pause status */}
+      {isPreparationPaused && (
+        <Html position={[0, 0, 0]} center>
+          <div style={{ 
+            color: 'white', 
+            backgroundColor: 'rgba(0,0,0,0.7)', 
+            padding: '4px 8px',
+            borderRadius: '4px',
+            fontSize: '14px',
+            fontWeight: 'bold'
+          }}>
+            Placing piece...
+          </div>
+        </Html>
       )}
     </group>
   );

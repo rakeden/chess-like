@@ -5,8 +5,8 @@ import { useGameContext, PIECE_VALUES } from '@/lib/game-context';
 import Piece from './Piece';
 import * as THREE from 'three';
 
-const PIECE_SPACING = 1.5;
-const ROW_HEIGHT = 1.2;
+const PIECE_SPACING = 0.9;
+const ROW_HEIGHT = 1.0;
 
 export default function ThreeDPieceSelection() {
   const { 
@@ -255,7 +255,7 @@ export default function ThreeDPieceSelection() {
   }, [pieceTypesWithCount]);
   
   return (
-    <group ref={groupRef} position={[0, 0, -4]}>
+    <group ref={groupRef} position={[0, 0.2, -4]}>
       {/* Show one piece per type with count */}
       {pieceTypesWithCount.map((piece) => {
         const position = piecePositions[piece.id] || [0, 0, 0];
@@ -300,14 +300,14 @@ export default function ThreeDPieceSelection() {
               type={piece.type}
               color={piece.color}
               value={piece.value}
-              scale={[0.7, 0.7, 0.7]}
+              scale={[0.65, 0.65, 0.65]}
               visible={true}
             />
             
             {/* Show glow effect when hovered */}
             {hoveredPiece === piece.id && !draggingPiece && (
               <mesh position={[0, 0.1, 0]}>
-                <circleGeometry args={[0.5, 16]} />
+                <circleGeometry args={[0.45, 16]} />
                 <meshBasicMaterial 
                   color={0xffff00}
                   transparent={true}
@@ -317,13 +317,13 @@ export default function ThreeDPieceSelection() {
             )}
             
             {/* Show point value and count below the piece using HTML */}
-            <Html position={[0, -0.5, 0]} center>
+            <Html position={[0, -0.4, 0]} center>
               <div style={{ 
                 color: 'white', 
                 backgroundColor: 'rgba(0,0,0,0.5)', 
-                padding: '2px 6px',
-                borderRadius: '4px',
-                fontSize: '12px',
+                padding: '1px 4px',
+                borderRadius: '3px',
+                fontSize: '10px',
                 fontWeight: 'bold',
                 display: 'flex',
                 flexDirection: 'column',
@@ -344,7 +344,7 @@ export default function ThreeDPieceSelection() {
             type={draggedPieceData.type}
             color={draggedPieceData.color}
             value={draggedPieceData.value}
-            scale={[0.7, 0.7, 0.7]}
+            scale={[0.65, 0.65, 0.65]}
             visible={true}
           />
         </group>

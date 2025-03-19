@@ -10,31 +10,8 @@ import ThreeDPieceSelection from '@/components/game/ThreeDPieceSelection';
 import { PlayerTurnCard } from '@/components/game/PlayerTurnCard';
 import { PreparationTimer } from '@/components/game/PreparationTimer';
 import { GamePhaseIndicator } from '@/components/game/GamePhaseIndicator';
-import { useDroppable } from '@dnd-kit/core';
 import stockfishUtils from '@/lib/stockfish-utils';
 import { getPuzzleById } from '@/lib/puzzles';
-
-// Droppable cell component for the overlay
-const DroppableCell = ({ row, col }) => {
-  const { setNodeRef } = useDroppable({
-    id: `cell-${row}-${col}`,
-    data: { row, col }
-  });
-
-  return (
-    <div 
-      ref={setNodeRef}
-      style={{
-        position: 'absolute',
-        width: `${100/5}%`,
-        height: `${100/5}%`,
-        top: `${(row/5) * 100}%`,
-        left: `${(col/5) * 100}%`,
-        zIndex: 10,
-      }}
-    />
-  );
-};
 
 export default function PuzzlePage() {
   const { puzzleId } = useParams();
@@ -96,20 +73,6 @@ export default function PuzzlePage() {
     resetGame();
     navigate('/puzzles');
   };
-  
-  // Create droppable cells for the overlay
-  const droppableCells = [];
-  for (let row = 0; row < 5; row++) {
-    for (let col = 0; col < 5; col++) {
-      droppableCells.push(
-        <DroppableCell 
-          key={`droppable-${row}-${col}`}
-          row={row}
-          col={col}
-        />
-      );
-    }
-  }
 
   // Handle game over view
   if (gamePhase === GAME_PHASES.GAME_OVER) {
@@ -233,24 +196,17 @@ export default function PuzzlePage() {
           <directionalLight position={[5, 10, 5]} intensity={0.8} castShadow />
           
           {/* Move the board up by adjusting its position */}
-          <group position={[0, -0.5, -1.5]}>
+          <group position={[0, 0, -1.5]}>
             <Board />
           </group>
           
           {/* Position the piece selection at the bottom with a clear separation */}
           {gamePhase === GAME_PHASES.PREPARATION && (
-            <group position={[0, -2.5, 3.5]}>
+            <group position={[0, 1.5, 6.5]}>
               <ThreeDPieceSelection />
             </group>
           )}
         </Canvas>
-        
-        {/* Overlay for dnd-kit droppable areas */}
-        <div className="absolute top-0 left-0 w-full h-full pointer-events-none">
-          <div className="relative w-full h-full pointer-events-auto">
-            {droppableCells}
-          </div>
-        </div>
       </div>
     </div>
   );

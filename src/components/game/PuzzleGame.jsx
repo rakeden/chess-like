@@ -153,7 +153,7 @@ export default function PuzzleGame({ puzzleData }) {
       
       {/* Set a padding-bottom to make space for the piece selection card */}
       <div className="w-full h-full pb-24">
-        <Canvas camera={{ position: [0, 5, 6], fov: 40 }}>
+        <Canvas camera={{ position: [0, 5, 6], fov: 50 }}>
           <OrbitControls
             enablePan={false}
             enableRotate={true}
@@ -171,7 +171,7 @@ export default function PuzzleGame({ puzzleData }) {
           <directionalLight position={[5, 10, 5]} intensity={0.8} castShadow />
           
           {/* Move the board up by adjusting its position */}
-          <group position={[0, -0.5, -1.5]}>
+          <group position={[0, 0, -0]}>
             <Board />
           </group>
           

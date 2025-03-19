@@ -1,10 +1,10 @@
 import { useRef, useEffect, useMemo } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
+import { Html } from '@react-three/drei'
 import { useGameContext } from '@/lib/game-context'
 import useRaycaster from '@/lib/useRaycaster'
 import * as THREE from 'three'
 import { boardToFEN } from '@/lib/stockfish-utils'
-import { Html } from '@react-three/drei'
 import Piece from './Piece'
 import Square from './Square'
 
@@ -12,19 +12,18 @@ const BOARD_SIZE = 5
 const SQUARE_SIZE = 1
 const BOARD_OFFSET = (BOARD_SIZE * SQUARE_SIZE) / 2 - SQUARE_SIZE / 2
 
+// Helper function to get chess coordinate notation
+const getChessCoordinate = (row, col) => {
+  const letters = ['A', 'B', 'C', 'D', 'E'];
+  return `${letters[row]}${col + 1}`;
+};
+
 // Helper function to map row/col to 3D position
 const mapPositionToBoard = (row, col) => {
   // Adjust position to center the piece on a square
   // For 5x5 board with 1x1 squares, we offset by 2 to center (0,0,0) on the middle
   // Use y=0.5 to ensure pieces sit correctly on the board surface
   return [col - 2, 0.5, row - 2];
-};
-
-// Helper function to get coordinate label
-const getCoordinateLabel = (row, col) => {
-  const files = ['A', 'B', 'C', 'D', 'E'];
-  const ranks = ['5', '4', '3', '2', '1'];
-  return `${files[col]}${ranks[row]}`;
 };
 
 export default function Board() {
@@ -108,13 +107,10 @@ export default function Board() {
   // Handle piece drag start
   const handlePieceDragStart = (pieceId) => {
     console.log("Piece drag started:", pieceId);
-    // You could add any drag start logic here
   };
   
   // Handle piece dragging
   const handlePieceDrag = (e, dragData) => {
-    // You could add any logic for during drag here
-    // console.log("Piece dragging:", dragData);
   };
   
   // Log FEN updates for debugging
@@ -177,25 +173,25 @@ export default function Board() {
                 isHovered={isHovered}
                 size={SQUARE_SIZE}
               />
-              <group position={position}>
-                <Html
-                  position={[0.35, 0.01, 0.35]}
-                  center
-                  sprite
-                  transform
-                  scale={0.15}
-                  style={{
-                    color: isLight ? '#b58863' : '#f0d9b5',
-                    fontFamily: 'monospace',
-                    fontSize: '10px',
-                    fontWeight: 'bold',
-                    userSelect: 'none',
-                    pointerEvents: 'none'
-                  }}
-                >
-                  {getCoordinateLabel(row, col)}
-                </Html>
-              </group>
+              {/* Coordinate label */}
+              <Html
+                position={[position[0], 0.01, position[2]]}
+                center
+                sprite
+                transform
+                scale={0.15}
+                style={{
+                  color: isLight ? '#b58863' : '#f0d9b5',
+                  fontFamily: 'monospace',
+                  fontSize: '10px',
+                  fontWeight: 'bold',
+                  userSelect: 'none',
+                  pointerEvents: 'none',
+                  opacity: 0.8
+                }}
+              >
+                {getChessCoordinate(row, col)}
+              </Html>
             </group>
           );
         })

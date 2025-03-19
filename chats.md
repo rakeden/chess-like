@@ -883,3 +883,43 @@ Ensure the chess pieces are correctly positioned on the square surface.
 - Fine-tune piece models for better proportions relative to squares
 - Add visual feedback for valid/invalid piece placements
 - Implement subtle landing animation when pieces are placed on squares
+
+## Board Coordinate Labels Implementation
+
+### User Request
+Add chess-style coordinate labels (A1 to E5) to the board squares and ensure proper board rotation for white player perspective.
+
+### Actions Taken
+1. Enhanced the Board component:
+   - Added coordinate labels using the Html component from @react-three/drei
+   - Implemented getChessCoordinate helper function to generate chess notation
+   - Positioned labels on each square with proper styling
+   - Ensured labels rotate with the board for correct orientation
+2. Coordinate System Implementation:
+   - Used traditional chess notation (A1 to E5)
+   - First row: A1, A2, A3, A4, A5
+   - Second row: B1, B2, B3, B4, B5
+   - And so on up to row E
+3. Visual Styling:
+   - Added small, monospace font labels
+   - Used contrasting colors based on square color
+   - Set appropriate opacity for subtle appearance
+   - Made labels non-interactive and non-selectable
+4. Board Rotation:
+   - Maintained proper board rotation for white player perspective
+   - Ensured coordinate labels rotate with the board
+   - Preserved existing piece placement and movement logic
+
+### Tech Details
+- Used Html component from @react-three/drei for text rendering
+- Positioned labels slightly above the board surface (y=0.01)
+- Applied transform and sprite properties for consistent rendering
+- Integrated with existing board rotation system
+- Maintained compatibility with drag-and-drop functionality
+
+### Next Steps
+- Consider adding optional coordinate visibility toggle
+- Add animation for coordinate appearance/disappearance
+- Implement coordinate-based move input system
+- Add support for traditional chess move notation
+- Consider adding arrow key navigation using coordinates

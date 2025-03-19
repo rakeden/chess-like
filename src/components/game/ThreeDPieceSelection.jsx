@@ -5,8 +5,8 @@ import { useGameContext, PIECE_VALUES } from '@/lib/game-context';
 import Piece from './Piece';
 import * as THREE from 'three';
 
-const PIECE_SPACING = 0.9;
-const ROW_HEIGHT = 1.0;
+const PIECE_SPACING = 1.1;
+const ROW_HEIGHT = 0.8;
 
 export default function ThreeDPieceSelection({ onDragStart, onDragEnd }) {
   const { 
@@ -79,7 +79,7 @@ export default function ThreeDPieceSelection({ onDragStart, onDragEnd }) {
     pieceTypesWithCount.forEach((piece, index) => {
       positions[piece.id] = [
         offsetX + index * PIECE_SPACING,
-        -ROW_HEIGHT,
+        -ROW_HEIGHT / 2,
         0
       ];
     });
@@ -228,7 +228,58 @@ export default function ThreeDPieceSelection({ onDragStart, onDragEnd }) {
   }, [pieceTypesWithCount]);
   
   return (
-    <group ref={groupRef} position={[0, -0.2, -4]}>
+    <group ref={groupRef} position={[0, -0.2, -2.5]}>
+      {/* Simple surface underneath the pieces */}
+      <group>
+        {/* Main surface */}
+        <mesh position={[0, -0.15, 0]} receiveShadow rotation={[-Math.PI / 2, 0, 0]}>
+          <planeGeometry args={[6, 1.8]} />
+          <meshStandardMaterial 
+            color="#334155" 
+            roughness={0.7}
+            metalness={0.2}
+          />
+        </mesh>
+        
+        {/* Edge highlighting */}
+        <mesh position={[0, -0.14, 0.9]} receiveShadow rotation={[-Math.PI / 2, 0, 0]}>
+          <planeGeometry args={[6, 0.05]} />
+          <meshStandardMaterial 
+            color="#94a3b8"
+            emissive="#64748b"
+            emissiveIntensity={0.2}
+          />
+        </mesh>
+        
+        {/* Edge highlighting - bottom */}
+        <mesh position={[0, -0.14, -0.9]} receiveShadow rotation={[-Math.PI / 2, 0, 0]}>
+          <planeGeometry args={[6, 0.05]} />
+          <meshStandardMaterial 
+            color="#94a3b8"
+            emissive="#64748b"
+            emissiveIntensity={0.2}
+          />
+        </mesh>
+      </group>
+      
+      {/* Title for the selection area */}
+      <Html
+        position={[0, 0.2, 0]}
+        center
+        sprite
+        transform
+        scale={0.3}
+        style={{
+          color: 'white',
+          fontWeight: 'bold',
+          textShadow: '0 0 5px rgba(0,0,0,0.7)',
+          userSelect: 'none',
+          pointerEvents: 'none'
+        }}
+      >
+        Available Pieces
+      </Html>
+      
       {/* Show one piece per type with count */}
       {pieceTypesWithCount.map((piece) => {
         const position = piecePositions[piece.id] || [0, 0, 0];
@@ -263,14 +314,14 @@ export default function ThreeDPieceSelection({ onDragStart, onDragEnd }) {
             
             {/* Show available count */}
             <Html
-              position={[0, -0.5, 0]}
+              position={[0, -0.3, 0]}
               center
               sprite
               transform
-              scale={0.2}
+              scale={0.25}
               style={{
-                background: 'rgba(0,0,0,0.7)',
-                padding: '2px 8px',
+                background: 'rgba(0,0,0,0.8)',
+                padding: '3px 10px',
                 borderRadius: '4px',
                 color: 'white',
                 fontWeight: 'bold',

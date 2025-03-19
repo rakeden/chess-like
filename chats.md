@@ -1130,3 +1130,41 @@ Remove the wooden board base and adjust all components to work at ground level.
 - Consider adding subtle shadows for pieces on the board
 - Evaluate lighting changes to complement the new board style
 - Fine-tune camera positioning for optimal view of the flatter board
+
+## Piece Selection Area Repositioning and Surface Addition
+
+### User Request
+Reposition the piece selection area closer to the board and add a simple surface underneath the pieces for better visual organization.
+
+### Actions Taken
+1. Piece Selection Repositioning:
+   - Moved the ThreeDPieceSelection component from z=-4 to z=-2.5 to bring it closer to the board
+   - Adjusted the ROW_HEIGHT from 1.0 to 0.8 for better vertical spacing
+   - Increased the PIECE_SPACING from 0.9 to 1.1 for better horizontal distribution
+   - Positioned pieces at -ROW_HEIGHT/2 instead of -ROW_HEIGHT for better placement
+
+2. Surface Addition:
+   - Added a simple surface plane underneath the pieces for visual context
+   - Created a dark slate-colored plane (color="#334155") with appropriate material properties
+   - Added highlighted edges at the top and bottom of the surface for better definition
+   - Applied subtle metalness (0.2) and roughness (0.7) for a more realistic appearance
+
+3. Visual Enhancements:
+   - Improved the piece count display with larger text (scale 0.25 from 0.2)
+   - Enhanced the count background with darker color and better padding
+   - Positioned the count indicators closer to the pieces (-0.3 instead of -0.5)
+   - Added a title "Available Pieces" at the top of the selection area
+
+### Tech Details
+- Used planeGeometry for the flat surface with dimensions [6, 1.8]
+- Applied meshStandardMaterial with appropriate properties for the surface
+- Created edge highlighting with thin planes (0.05 height) and lighter color
+- Used Html component from @react-three/drei for the title and count displays
+- Maintained all drag-and-drop functionality with the new positioning
+
+### Next Steps
+- Fine-tune the position based on user feedback
+- Consider adding subtle animations when pieces are selected
+- Explore adding visual feedback when pieces are dragged
+- Add hover effects to indicate which pieces can be selected
+- Consider adding tooltips with piece movement rules

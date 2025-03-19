@@ -121,6 +121,7 @@ export default function ThreeDPieceSelection() {
   // Handle drag end
   const handlePieceDrop = (e, dropData) => {
     if (!draggingPiece || !draggedPieceData) {
+      console.log("Drop rejected: No dragging piece data available");
       resumePreparation();
       return;
     }
@@ -130,11 +131,16 @@ export default function ThreeDPieceSelection() {
       
       // Place the piece if it's a valid cell
       if (cellData.row !== undefined && cellData.col !== undefined) {
+        console.log(`Placing piece ${draggingPiece} at row:${cellData.row}, col:${cellData.col}`);
         placePiece(draggingPiece, { 
           row: cellData.row, 
           col: cellData.col 
         });
+      } else {
+        console.warn("Invalid cell data in drop event:", cellData);
       }
+    } else {
+      console.log("Piece dropped outside board or no valid cell detected");
     }
     
     // Reset dragging state and resume timer

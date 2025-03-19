@@ -10,6 +10,13 @@ const BOARD_SIZE = 5
 const SQUARE_SIZE = 1
 const BOARD_OFFSET = (BOARD_SIZE * SQUARE_SIZE) / 2 - SQUARE_SIZE / 2
 
+// Helper function to map row/col to 3D position
+const mapPositionToBoard = (row, col) => {
+  // Adjust position to center the piece on a square
+  // For 5x5 board with 1x1 squares, we offset by 2 to center (0,0,0) on the middle
+  return [col - 2, 0.6, row - 2];
+};
+
 export default function Board() {
   const { gl } = useThree();
   
@@ -109,12 +116,12 @@ export default function Board() {
   // Handle piece drop
   const handlePieceDrop = (e, dropData) => {
     if (!dropData || !dropData.cellData) {
-      console.log("Piece dropped outside the board");
+      console.log("Board: Piece dropped outside the board");
       return;
     }
     
     const { cellData, pieceData } = dropData;
-    console.log("Piece dropped:", { 
+    console.log("Board: Piece dropped:", { 
       pieceId: pieceData.id, 
       row: cellData.row, 
       col: cellData.col 
@@ -174,6 +181,11 @@ export default function Board() {
         const isDraggable = piece.color === playerColor && 
                           (gamePhase === GAME_PHASES.PREPARATION || gamePhase === GAME_PHASES.PLAYING);
         
+        // Use the mapping function to get the position
+        const piecePosition = piece.position 
+          ? mapPositionToBoard(piece.position.row, piece.position.col)
+          : [0, 0, 0];
+        
         return (
           <Piece
             key={`${piece.id || index}-${piece.position ? `${piece.position.row}-${piece.position.col}` : 'hand'}`}
@@ -181,11 +193,7 @@ export default function Board() {
             type={piece.type || 'pawn'}
             color={piece.color || 'white'}
             value={piece.value || 0}
-            position={
-              piece.position 
-                ? [piece.position.col - 2, 0.6, piece.position.row - 2] 
-                : [0, 0, 0]
-            }
+            position={piecePosition}
             scale={[0.8, 0.8, 0.8]}
             visible={!!piece.position}
             draggable={isDraggable}

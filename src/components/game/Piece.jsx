@@ -213,10 +213,14 @@ export default function Piece({
       if (onDragEnd) {
         // Find intersections with the board to determine drop location
         const raycaster = new THREE.Raycaster();
-        const direction = new THREE.Vector3(0, -1, 0); // Look downward
-        raycaster.set(meshRef.current.position, direction);
+        // Cast ray downward and use a longer distance
+        const direction = new THREE.Vector3(0, -1, 0);
+        const position = meshRef.current.position.clone();
+        // Move the raycaster origin point higher to ensure it captures cells below
+        position.y += 2.0; 
+        raycaster.set(position, direction);
         
-        // Find all board cells
+        // Find all board cells - use a more comprehensive approach
         const boardCells = [];
         scene.traverse((object) => {
           if (object.userData && object.userData.isCell) {
@@ -224,11 +228,16 @@ export default function Piece({
           }
         });
         
-        // Check for intersections
+        // Use a larger threshold for intersection detection
+        raycaster.params.Line.threshold = 1;
+        raycaster.params.Points.threshold = 1;
+        
+        // Check for intersections with a far distance
         const intersects = raycaster.intersectObjects(boardCells, true);
         
         if (intersects.length > 0) {
           const cellData = intersects[0].object.userData;
+          console.log("Drop detected on cell:", cellData);
           onDragEnd(e, {
             cellData,
             position: meshRef.current.position.clone(),
@@ -240,6 +249,7 @@ export default function Piece({
             }
           });
         } else {
+          console.log("No cell detected for drop");
           onDragEnd(e, null);
         }
       }

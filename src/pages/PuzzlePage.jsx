@@ -189,8 +189,8 @@ export default function PuzzlePage() {
             maxDistance={10}
             rotateSpeed={0.5}
             // Disable rotation around Y axis (vertical axis)
-            minAzimuthAngle={-Math.PI / 36}
-            maxAzimuthAngle={Math.PI / 36}
+            minAzimuthAngle={-Math.PI / 4}
+            maxAzimuthAngle={Math.PI / 4}
           />
           <ambientLight intensity={0.6} />
           <directionalLight position={[5, 10, 5]} intensity={0.8} castShadow />

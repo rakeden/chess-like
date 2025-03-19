@@ -221,7 +221,7 @@ export default function Board() {
             color={piece.color || 'white'}
             value={piece.value || 0}
             position={piecePosition}
-            scale={[0.8, 0.8, 0.8]}
+            scale={[12, 12, 12]}
             visible={!!piece.position}
             draggable={isDraggable}
             onDragStart={() => handlePieceDragStart(piece.id)}

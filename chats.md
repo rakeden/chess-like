@@ -1030,3 +1030,63 @@ Fix Vite error related to parsing GLB files by adding proper configuration for h
 - Consider implementing model lazy loading
 - Add loading states during model import
 - Consider adding model compression options
+
+## Chess Piece Size Adjustment
+
+### User Request
+Fix the size of the rendered chess pieces which were appearing too small on the board.
+
+### Actions Taken
+1. Board Piece Scaling:
+   - Increased the scale of pieces on the board from [0.8, 0.8, 0.8] to [2, 2, 2]
+   - Adjusted piece scale to better fit the square size
+   - Maintained consistent proportions across all piece types
+   - Ensured pieces are clearly visible on the board
+
+2. Selection Area Adjustments:
+   - Updated piece scale in ThreeDPieceSelection from [0.65, 0.65, 0.65] to [1.6, 1.6, 1.6]
+   - Made selection pieces slightly smaller than board pieces for better visual hierarchy
+   - Maintained proper spacing between pieces in the selection area
+   - Preserved drag-and-drop functionality with new scales
+
+### Tech Details
+- Modified scale prop in Board.jsx for placed pieces
+- Updated scale prop in ThreeDPieceSelection.jsx for piece selection
+- Maintained aspect ratios of the GLB models
+- Preserved animation and interaction functionality with new scales
+
+### Next Steps
+- Fine-tune piece scales based on specific GLB model dimensions
+- Consider adding scale transitions during drag and drop
+- Adjust camera settings if needed for the new piece sizes
+- Add scale variation for different piece types if needed
+- Consider adding responsive scaling based on board size
+
+## Uniform Chess Piece Scaling
+
+### User Request
+Adjust the scaling factor to 12 for all chess pieces to ensure consistency across the board and selection area.
+
+### Actions Taken
+1. Board Piece Scaling:
+   - Updated piece scale on the board from [2, 2, 2] to [12, 12, 12]
+   - Ensured consistent size for all pieces on the board
+   - Maintained proper proportions relative to board squares
+
+2. Selection Area Scaling:
+   - Changed piece scale in selection area from [13, 13, 13] to [12, 12, 12]
+   - Matched selection piece size with board pieces
+   - Created visual consistency between selection and placement
+
+### Tech Details
+- Applied uniform scale factor of 12 across all piece instances
+- Maintained aspect ratios of GLB models
+- Preserved existing animation and interaction functionality
+- Ensured consistent visual appearance throughout the game
+
+### Next Steps
+- Verify piece visibility and proportions with the new scale
+- Fine-tune lighting and shadows for the adjusted size
+- Consider adjusting camera distance if needed
+- Monitor performance with the larger scale factor
+- Test piece interactions at the new scale

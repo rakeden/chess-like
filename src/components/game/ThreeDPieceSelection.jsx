@@ -250,7 +250,7 @@ export default function ThreeDPieceSelection({ onDragStart, onDragEnd }) {
               type={piece.type}
               color={piece.color}
               value={piece.value}
-              scale={[0.65, 0.65, 0.65]}
+              scale={[12, 12, 12]}
               visible={true}
               draggable={true}
               onDragStart={(e) => {

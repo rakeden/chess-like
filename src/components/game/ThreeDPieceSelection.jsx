@@ -22,13 +22,18 @@ export default function ThreeDPieceSelection({ onDragStart, onDragEnd }) {
   
   const { scene, camera, gl } = useThree();
   const groupRef = useRef();
-  const piecesRef = useRef([]);
+  const pieceRefs = useRef({});
   
   const [hoveredPiece, setHoveredPiece] = useState(null);
   const [draggingPiece, setDraggingPiece] = useState(null);
   const [draggedPieceData, setDraggedPieceData] = useState(null);
-  const [activeDragObject, setActiveDragObject] = useState(null);
-  const [startDragPosition, setStartDragPosition] = useState(null);
+  
+  // Log when hoveredPiece changes
+  useEffect(() => {
+    if (hoveredPiece) {
+      console.log('ThreeDPieceSelection - Hovering piece:', hoveredPiece);
+    }
+  }, [hoveredPiece]);
   
   // Filter pieces to only show player's color and exclude kings
   const playerPieces = useMemo(() => {
@@ -89,16 +94,26 @@ export default function ThreeDPieceSelection({ onDragStart, onDragEnd }) {
     
     return positions;
   }, [pieceTypesWithCount, groupedPieces]);
-
-  // Handle drag start
-  const handlePieceDragStart = (e, pieceId) => {
-    // If a piece is already being dragged, don't allow dragging another
-    if (draggingPiece) {
-      return;
+  
+  // Register piece function
+  const registerPiece = (id, ref) => {
+    if (ref) {
+      pieceRefs.current[id] = ref;
     }
+  };
+  
+  // Get draggable objects for DragControls
+  const draggableObjects = useMemo(() => {
+    return Object.values(pieceRefs.current).filter(ref => ref);
+  }, []);
+
+  // Handle dragstart event
+  const handleDragStart = (e) => {
+    const obj = e.object;
+    document.body.style.cursor = 'grabbing';
     
-    // Find the piece type that was clicked
-    const pieceType = pieceTypesWithCount.find(p => p.id === pieceId);
+    // Find the piece type
+    const pieceType = pieceTypesWithCount.find(p => p.id === obj.userData.pieceId);
     
     if (pieceType) {
       // Get the first available piece ID of this type
@@ -113,9 +128,6 @@ export default function ThreeDPieceSelection({ onDragStart, onDragEnd }) {
         value: pieceType.value
       });
       
-      // Store the start position for resetting if needed
-      setStartDragPosition(piecePositions[pieceId]);
-      
       // Pause preparation timer while dragging
       pausePreparation();
       
@@ -126,42 +138,69 @@ export default function ThreeDPieceSelection({ onDragStart, onDragEnd }) {
     }
   };
   
-  // Handle piece dragging
-  const handlePieceDrag = (e, dragData) => {
-    // This is handled by DragControls automatically
+  // Handle drag event to lock the y-position
+  const handleDrag = (e) => {
+    if (e.object) {
+      e.object.position.y = -0.15;
+      // Apply 5 degree tilt around Y axis while dragging
+      e.object.rotation.y = THREE.MathUtils.degToRad(5);
+    }
   };
   
-  // Handle drag end
-  const handlePieceDrop = (e, dropData) => {
+  // Handle dragend event
+  const handleDragEnd = (e) => {
+    document.body.style.cursor = 'auto';
+    const obj = e.object;
+    
+    // Reset rotation when drag ends
+    obj.rotation.y = 0;
+    
     if (!draggingPiece || !draggedPieceData) {
-      console.log("Drop rejected: No dragging piece data available");
       resumePreparation();
       if (onDragEnd) onDragEnd();
       return;
     }
     
-    if (dropData && dropData.cellData) {
-      const { cellData } = dropData;
+    // Use raycasting to find what's under the piece
+    const raycaster = new THREE.Raycaster();
+    
+    // Cast ray down from the piece position
+    const origin = new THREE.Vector3(
+      obj.position.x,
+      obj.position.y + 1,
+      obj.position.z
+    );
+    const direction = new THREE.Vector3(0, -1, 0);
+    raycaster.set(origin, direction);
+    
+    // Find intersections with board cells
+    const intersects = raycaster.intersectObjects(
+      scene.children,
+      true
+    ).filter(hit => hit.object.userData.isCell);
+    
+    if (intersects.length > 0) {
+      const cellData = intersects[0].object.userData;
       
       // Place the piece if it's a valid cell
       if (cellData.row !== undefined && cellData.col !== undefined) {
-        console.log(`Placing piece ${draggingPiece} at row:${cellData.row}, col:${cellData.col}`);
         placePiece(draggingPiece, { 
           row: cellData.row, 
           col: cellData.col 
         });
-      } else {
-        console.warn("Invalid cell data in drop event:", cellData);
       }
     } else {
-      console.log("Piece dropped outside board or no valid cell detected");
+      // Reset piece position
+      const pieceType = pieceTypesWithCount.find(p => p.allPieceIds.includes(draggingPiece));
+      if (pieceType && piecePositions[pieceType.id]) {
+        const originalPos = piecePositions[pieceType.id];
+        obj.position.set(originalPos[0], originalPos[1], originalPos[2]);
+      }
     }
     
     // Reset dragging state and resume timer
     setDraggingPiece(null);
     setDraggedPieceData(null);
-    setActiveDragObject(null);
-    setStartDragPosition(null);
     resumePreparation();
     
     // Call parent's onDragEnd callback if provided
@@ -170,66 +209,6 @@ export default function ThreeDPieceSelection({ onDragStart, onDragEnd }) {
     }
   };
 
-  // Set up pointer events for hover effects
-  useEffect(() => {
-    if (!groupRef.current || !gl) return;
-    
-    const canvas = gl.domElement;
-    
-    // Handle hover effects
-    const handlePointerMove = (event) => {
-      // Only proceed with hover effects when not dragging
-      if (draggingPiece) return;
-      
-      // Convert mouse coordinates to normalized device coordinates
-      const x = (event.clientX / window.innerWidth) * 2 - 1;
-      const y = -(event.clientY / window.innerHeight) * 2 + 1;
-      
-      // Update raycaster with mouse position
-      const raycaster = new THREE.Raycaster();
-      raycaster.setFromCamera({ x, y }, camera);
-      
-      // Find intersections with objects
-      const intersects = raycaster.intersectObjects(piecesRef.current, true);
-      
-      if (intersects.length > 0) {
-        // Sort intersections by distance, closest first
-        intersects.sort((a, b) => a.distance - b.distance);
-        
-        // Take only the closest intersection
-        const hoveredObject = intersects[0].object;
-        let current = hoveredObject;
-        
-        // Walk up the parent chain to find our group
-        while (current && !current.userData.pieceId) {
-          current = current.parent;
-        }
-        
-        if (current && current.userData.pieceId) {
-          setHoveredPiece(current.userData.pieceId);
-          canvas.style.cursor = 'grab';
-        } else {
-          setHoveredPiece(null);
-          canvas.style.cursor = 'auto';
-        }
-      } else {
-        setHoveredPiece(null);
-        canvas.style.cursor = 'auto';
-      }
-    };
-    
-    canvas.addEventListener('pointermove', handlePointerMove);
-    
-    return () => {
-      canvas.removeEventListener('pointermove', handlePointerMove);
-    };
-  }, [camera, draggingPiece, gl, piecesRef]);
-  
-  // Update refs when pieces change
-  useEffect(() => {
-    piecesRef.current = [];
-  }, [pieceTypesWithCount]);
-  
   return (
     <group ref={groupRef} position={[0, -0.2, -2.5]}>
       {/* Simple surface underneath the pieces */}
@@ -244,6 +223,17 @@ export default function ThreeDPieceSelection({ onDragStart, onDragEnd }) {
           />
         </mesh>
       </group>
+      
+      {/* Add declarative DragControls */}
+      {draggableObjects.length > 0 && (
+        <DragControls
+          transformGroup
+          args={[draggableObjects, camera, gl.domElement]}
+          onDragStart={handleDragStart}
+          onDrag={handleDrag}
+          onDragEnd={handleDragEnd}
+        />
+      )}
       
       {/* Title for the selection area */}
       <Html
@@ -266,6 +256,8 @@ export default function ThreeDPieceSelection({ onDragStart, onDragEnd }) {
       {/* Show one piece per type with count */}
       {pieceTypesWithCount.map((piece) => {
         const position = piecePositions[piece.id] || [0, 0, 0];
+        const isHovered = hoveredPiece === piece.id;
+        const isDragging = draggingPiece === piece.id;
         
         return (
           <group 
@@ -276,9 +268,8 @@ export default function ThreeDPieceSelection({ onDragStart, onDragEnd }) {
               pieceType: piece.type,
               pieceColor: piece.color
             }}
-            ref={(el) => {
-              if (el) piecesRef.current.push(el);
-            }}
+            onPointerOver={() => setHoveredPiece(piece.id)}
+            onPointerOut={() => setHoveredPiece(null)}
           >
             <Piece
               type={piece.type}
@@ -286,13 +277,12 @@ export default function ThreeDPieceSelection({ onDragStart, onDragEnd }) {
               value={piece.value}
               scale={[12, 12, 12]}
               visible={true}
-              draggable={true}
-              onDragStart={(e) => {
-                handlePieceDragStart(e, piece.id);
-              }}
-              onDrag={handlePieceDrag}
-              onDragEnd={handlePieceDrop}
               id={piece.id}
+              position={position}
+              registerPiece={registerPiece}
+              isBeingDragged={draggingPiece === piece.id}
+              isDraggable={true}
+              isHovered={isHovered}
             />
             
             {/* Show available count */}

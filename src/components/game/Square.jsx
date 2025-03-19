@@ -1,25 +1,37 @@
-import { useRef } from 'react'
+import { useRef, useEffect } from 'react'
+import * as THREE from 'three'
 
-const Square = ({ position, color, row, col, isHovered, size = 1 }) => {
-  const baseRef = useRef();
+const Square = ({ position = [0, 0, 0], color = 'white', size = 1, row, col, isHovered = false }) => {
+  const meshRef = useRef();
+  
+  // Set the cell layer and userData on mount
+  useEffect(() => {
+    if (meshRef.current) {
+      // Set the mesh to layer 1 for raycasting
+      meshRef.current.layers.enable(1);
+      
+      // Update userData for cell identification
+      meshRef.current.userData = {
+        isCell: true,
+        row,
+        col
+      };
+    }
+  }, [row, col]);
   
   return (
-    <group>
-      {/* Base square mesh */}
-      <mesh 
-        ref={baseRef}
-        position={[position[0], position[1] + 0.025, position[2]]} 
-        receiveShadow
-        userData={{ isCell: true, row, col }}
-      >
-        <boxGeometry args={[size, 0.05, size]} />
-        <meshStandardMaterial 
-          color={color} 
-          emissive={isHovered ? color : '#000000'} 
-          emissiveIntensity={isHovered ? 0.3 : 0}
-        />
-      </mesh>
-    </group>
+    <mesh 
+      position={position} 
+      receiveShadow
+      ref={meshRef}
+    >
+      <boxGeometry args={[size, 0.1, size]} />
+      <meshStandardMaterial 
+        color={isHovered ? '#5d98ff' : color} 
+        roughness={0.5} 
+        metalness={0.2}
+      />
+    </mesh>
   )
 }
 

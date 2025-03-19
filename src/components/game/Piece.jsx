@@ -1,6 +1,6 @@
 import { useRef, useMemo, useEffect, useState } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
-import { DragControls, useGLTF } from '@react-three/drei';
+import { useGLTF, Html } from '@react-three/drei';
 import * as THREE from 'three';
 
 // Import GLB models
@@ -42,24 +42,31 @@ export default function Piece({
   visible = true,
   value,
   id,
-  draggable = false,
-  onDragStart,
-  onDrag,
-  onDragEnd
+  registerPiece = null,
+  isBeingDragged = false,
+  isDraggable = false,
+  isHovered = false
 }) {
   const groupRef = useRef();
   const materialRef = useRef();
   const [opacity, setOpacity] = useState(0);
-  const [animScale, setAnimScale] = useState(0.01); // Start with almost zero scale
+  const [animScale, setAnimScale] = useState(0.01); 
+  const [currentPosition, setCurrentPosition] = useState(position);
   const animationStartTimeRef = useRef(null);
-  const animationDuration = 1.2; // Slightly longer for bounce effect
-  const { scene } = useThree();
+  const animationDuration = 1.2;
   
   // Skip rendering if not visible
   if (!visible) return null;
   
   // Load the appropriate GLB model
   const { scene: modelScene } = useGLTF(PIECE_MODELS[type] || PIECE_MODELS.pawn);
+  
+  // Register this piece with the board's drag controls
+  useEffect(() => {
+    if (registerPiece && groupRef.current && id) {
+      registerPiece(id, groupRef.current);
+    }
+  }, [registerPiece, id]);
   
   // Clone the model scene to avoid sharing materials between instances
   const model = useMemo(() => {
@@ -68,18 +75,41 @@ export default function Piece({
       if (node.isMesh) {
         // Create new materials for each piece to allow independent colors
         node.material = new THREE.MeshStandardMaterial({
-          color: color === 'white' ? 0xf0f0f0 : 0x202020,
-          emissive: color === 'white' ? 0x404040 : 0x101010,
-          metalness: color === 'white' ? 0.1 : 0.3,
-          roughness: color === 'white' ? 0.5 : 0.7,
+          color: color === 'white' ? 0xFFFFFF : 0x202020,
+          emissive: color === 'white' ? 0x303030 : 0x101010,
+          metalness: color === 'white' ? 0.2 : 0.4,
+          roughness: color === 'white' ? 0.3 : 0.6,
           transparent: true,
           opacity: opacity
         });
         materialRef.current = node.material;
+        
+        // Add userData to each mesh for better raycasting detection
+        node.userData = {
+          isPiece: true,
+          pieceId: id,
+          pieceType: type,
+          pieceColor: color,
+          pieceValue: value,
+          isDraggable,
+          isDragging: isBeingDragged
+        };
       }
     });
+    
+    // Also add userData to the scene root for parent-based detection
+    clonedScene.userData = {
+      isPiece: true,
+      pieceId: id,
+      pieceType: type,
+      pieceColor: color,
+      pieceValue: value,
+      isDraggable,
+      isDragging: isBeingDragged
+    };
+    
     return clonedScene;
-  }, [modelScene, color, opacity]);
+  }, [modelScene, color, opacity, id, type, value, isDraggable, isBeingDragged]);
 
   // Ensure the piece sits properly on the square surface
   const safePosition = useMemo(() => {
@@ -110,134 +140,79 @@ export default function Piece({
     if (progress < 1) {
       groupRef.current.rotation.y = 4 * Math.PI * easeOutQuad(progress);
     }
+    
+    // Add hover animation effect
+    if (progress >= 1 && isHovered && !isBeingDragged) {
+      // Apply a gentle rotation when hovered
+      groupRef.current.rotation.y = THREE.MathUtils.degToRad(5);
+      console.log(`Piece ${id} (${type}) is hovered`);
+    } else if (progress >= 1 && !isBeingDragged) {
+      // Reset rotation when not hovered
+      groupRef.current.rotation.y = 0;
+    }
   });
   
-  // Handle pointer events for hover effects
+  // Update position in real-time
+  useFrame(() => {
+    if (groupRef.current) {
+      const pos = groupRef.current.position;
+      setCurrentPosition([pos.x, pos.y, pos.z]);
+    }
+  });
+  
+  // Handle hover effects
   const handlePointerOver = (e) => {
-    if (draggable) {
+    if (isDraggable) {
       e.stopPropagation();
       document.body.style.cursor = 'grab';
     }
   };
   
   const handlePointerOut = (e) => {
-    if (draggable) {
+    if (isDraggable) {
       e.stopPropagation();
       document.body.style.cursor = 'auto';
     }
   };
-  
-  // Handle drag start
-  const handleDragStart = (e) => {
-    if (draggable && onDragStart) {
-      document.body.style.cursor = 'grabbing';
-      onDragStart(e);
-    }
-  };
-  
-  // Handle drag end
-  const handleDragEnd = (e) => {
-    if (!draggable) return;
-    
-    document.body.style.cursor = 'auto';
-    
-    if (onDragEnd) {
-      // Use raycasting to find the cell under the piece
-      const raycaster = new THREE.Raycaster();
-      raycaster.layers.set(1); // Use layer 1 for board cells
-      
-      // Cast ray down from the piece position
-      const origin = new THREE.Vector3(
-        groupRef.current.position.x,
-        groupRef.current.position.y + 1,
-        groupRef.current.position.z
-      );
-      const direction = new THREE.Vector3(0, -1, 0);
-      raycaster.set(origin, direction);
-      
-      // Find intersections with board cells
-      const intersects = raycaster.intersectObjects(
-        scene.children,
-        true
-      ).filter(hit => hit.object.userData.isCell);
-      
-      if (intersects.length > 0) {
-        const cellData = intersects[0].object.userData;
-        console.log("Drop detected on cell:", cellData);
-        
-        // Calculate the center position of the cell
-        const centerX = cellData.col - 2;
-        const centerZ = cellData.row - 2;
-        
-        // Snap the piece to the center of the cell
-        groupRef.current.position.x = centerX;
-        groupRef.current.position.z = centerZ;
-        groupRef.current.position.y = 0.1; // Adjusted height to match the new board level
-        
-        onDragEnd(e, {
-          cellData,
-          position: groupRef.current.position.clone(),
-          pieceData: {
-            id: id || groupRef.current.userData.pieceId,
-            type,
-            color,
-            value
-          }
-        });
-      } else {
-        // If dropped outside a valid board cell, still call onDragEnd with no cell data
-        onDragEnd(e, {
-          position: groupRef.current.position.clone(),
-          pieceData: {
-            id: id || groupRef.current.userData.pieceId,
-            type,
-            color,
-            value
-          }
-        });
-      }
-    }
-  };
-  
-  const handleDrag = (e) => {
-    if (groupRef.current && onDrag) {
-      onDrag(e);
-    }
-  };
 
-  // Create userData for raycasting
-  const pieceUserData = {
-    isPiece: true,
-    pieceId: id || `piece-${Math.random().toString(36).substr(2, 9)}`,
-    pieceType: type,
-    pieceColor: color,
-    pieceValue: value,
-    isDragging: false
-  };
-  
-  // If draggable, wrap with DragControls
-  const content = (
+  return (
     <group
       position={safePosition}
       scale={scale.map(s => s * animScale)}
       ref={groupRef}
       onPointerOver={handlePointerOver}
       onPointerOut={handlePointerOut}
-      userData={pieceUserData}
     >
       <primitive object={model} />
+      
+      {/* Hover indicator */}
+      {isHovered && !isBeingDragged && (
+        <mesh position={[0, 0.5, 0]}>
+          <sphereGeometry args={[0.1, 8, 8]} />
+          <meshBasicMaterial color="#ffcc00" transparent opacity={0.7} />
+        </mesh>
+      )}
+      
+      <Html
+        position={[0, 0, 0]}
+        center
+        sprite
+        transform
+        scale={0.15}
+        style={{
+          color: 'white',
+          backgroundColor: 'rgba(0,0,0,0.5)',
+          padding: '2px 4px',
+          borderRadius: '3px',
+          fontFamily: 'monospace',
+          fontSize: '8px',
+          fontWeight: 'bold',
+          userSelect: 'none',
+          pointerEvents: 'none',
+        }}
+      >
+        {`${currentPosition[0].toFixed(1)},${currentPosition[1].toFixed(1)},${currentPosition[2].toFixed(1)}`}
+      </Html>
     </group>
   );
-  
-  return draggable ? (
-    <DragControls
-      autoTransform
-      onDragStart={handleDragStart}
-      onDrag={handleDrag}
-      onDragEnd={handleDragEnd}
-      transformGroup={true}
-    >
-      {content}
-    </DragControls>
-  ) : content;
 } 

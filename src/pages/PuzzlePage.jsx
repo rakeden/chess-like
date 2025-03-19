@@ -13,6 +13,128 @@ import { GamePhaseIndicator } from '@/components/game/GamePhaseIndicator';
 import stockfishUtils from '@/lib/stockfish-utils';
 import { getPuzzleById } from '@/lib/puzzles';
 
+// Separated component for FEN display
+const FenDisplay = ({ currentFEN, showFEN, setShowFEN }) => {
+  const [copied, setCopied] = useState(false);
+  
+  const copyFEN = () => {
+    navigator.clipboard.writeText(currentFEN).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+  
+  return (
+    <div className="absolute top-20 right-4 z-10">
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button 
+            size="sm"
+            variant="outline"
+            className="h-8 bg-black/50 text-white hover:bg-black/70"
+            onClick={() => setShowFEN(!showFEN)}
+          >
+            {showFEN ? 'Hide FEN' : 'Show FEN'}
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>Show/hide the FEN notation</p>
+        </TooltipContent>
+      </Tooltip>
+      
+      {showFEN && (
+        <div className="mt-2 bg-black/50 text-white p-2 rounded-md flex items-center">
+          <div className="mr-2 font-mono text-xs truncate max-w-[250px]">
+            {currentFEN}
+          </div>
+          <Button 
+            size="sm"
+            variant="ghost"
+            className="h-6 ml-auto text-xs"
+            onClick={copyFEN}
+          >
+            {copied ? 'Copied!' : 'Copy'}
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Game over screen as a separate component
+const GameOverScreen = ({ onTryAgain, onBackToPuzzles }) => (
+  <div className="flex items-center justify-center min-h-[calc(100vh-8rem)]">
+    <div className="bg-card p-6 rounded-lg shadow-md max-w-md">
+      <h2 className="text-2xl font-bold mb-4">Game Over</h2>
+      <p className="mb-4">The puzzle has ended.</p>
+      <div className="flex flex-col gap-3">
+        <Button 
+          size="lg" 
+          className="w-full"
+          onClick={onTryAgain}
+        >
+          Try Again
+        </Button>
+        <Button 
+          variant="outline"
+          size="lg" 
+          className="w-full"
+          onClick={onBackToPuzzles}
+        >
+          Back to Puzzles
+        </Button>
+      </div>
+    </div>
+  </div>
+);
+
+// Camera and lighting setup as a separate component
+const SceneSetup = ({ children, isDraggingPiece }) => {
+  const controlsRef = useRef(null);
+  
+  return (
+    <Canvas 
+      camera={{ 
+        position: [0, 3, 6],
+        fov: 45,
+        near: 0.1,
+        far: 1000
+      }}
+      shadows
+    >
+      <OrbitControls
+        ref={controlsRef}
+        enablePan={false}
+        enableRotate={!isDraggingPiece}
+        enableZoom={!isDraggingPiece}
+        minPolarAngle={Math.PI / 3}
+        maxPolarAngle={Math.PI / 2.2}
+        minDistance={4}
+        maxDistance={8}
+        rotateSpeed={0.5}
+        zoomSpeed={0.8}
+        minAzimuthAngle={-Math.PI / 6}
+        maxAzimuthAngle={Math.PI / 6}
+        target={[0, 0, 0]}
+      />
+      <ambientLight intensity={0.4} />
+      <directionalLight 
+        position={[3, 8, 4]} 
+        intensity={1.2}
+        castShadow
+        shadow-mapSize-width={2048}
+        shadow-mapSize-height={2048}
+      />
+      <directionalLight
+        position={[-2, 3, -2]}
+        intensity={0.3}
+        castShadow={false}
+      />
+      {children}
+    </Canvas>
+  );
+};
+
 export default function PuzzlePage() {
   const { puzzleId } = useParams();
   const navigate = useNavigate();
@@ -26,32 +148,29 @@ export default function PuzzlePage() {
     board,
     startPuzzle,
     resetGame,
-    setIsWhitesTurn,
-    setGamePhase,
-    syncBoardWithFen,
-    fen
+    syncBoardWithFen
   } = useGameContext();
   
   const [currentFEN, setCurrentFEN] = useState('');
-  const [copied, setCopied] = useState(false);
   const [showFEN, setShowFEN] = useState(false);
   const [puzzleData, setPuzzleData] = useState(null);
-  const [showSolution, setShowSolution] = useState(false);
   const [isDraggingPiece, setIsDraggingPiece] = useState(false);
-  const controlsRef = useRef(null);
   
   // Load the puzzle when component mounts or puzzleId changes
   useEffect(() => {
-    if (puzzleId) {
-      const puzzle = getPuzzleById(puzzleId);
-      if (puzzle) {
-        setPuzzleData(puzzle);
-        startPuzzle(puzzle);
-      } else {
-        console.error(`Puzzle with ID ${puzzleId} not found`);
-        navigate('/puzzles');
+    const loadPuzzle = () => {
+      if (puzzleId) {
+        const puzzle = getPuzzleById(puzzleId);
+        if (puzzle) {
+          setPuzzleData(puzzle);
+          startPuzzle(puzzle);
+        } else {
+          navigate('/puzzles');
+        }
       }
-    }
+    };
+    
+    loadPuzzle();
   }, [puzzleId, startPuzzle, navigate]);
   
   // Generate and update FEN when the board changes
@@ -67,111 +186,51 @@ export default function PuzzlePage() {
     }
   }, [board, pieces, opponentPieces, playerColor]);
   
-  // Copy FEN to clipboard
-  const copyFEN = () => {
-    navigator.clipboard.writeText(currentFEN).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    });
-  };
-  
-  // Handle game over or returning to puzzle selection
+  // Handler functions
   const handleBackToPuzzles = () => {
     resetGame();
     navigate('/puzzles');
   };
-
-  // Handle game over view
+  
+  const handleTryAgain = () => {
+    if (puzzleData) {
+      startPuzzle(puzzleData);
+    }
+  };
+  
+  // Render game over screen if in GAME_OVER phase
   if (gamePhase === GAME_PHASES.GAME_OVER) {
     return (
-      <div className="flex items-center justify-center min-h-[calc(100vh-8rem)]">
-        <div className="bg-card p-6 rounded-lg shadow-md max-w-md">
-          <h2 className="text-2xl font-bold mb-4">Game Over</h2>
-          <p className="mb-4">The puzzle has ended.</p>
-          <div className="flex flex-col gap-3">
-            <Button 
-              size="lg" 
-              className="w-full"
-              onClick={() => {
-                if (puzzleData) {
-                  startPuzzle(puzzleData);
-                }
-              }}
-            >
-              Try Again
-            </Button>
-            <Button 
-              variant="outline"
-              size="lg" 
-              className="w-full"
-              onClick={handleBackToPuzzles}
-            >
-              Back to Puzzles
-            </Button>
-          </div>
-        </div>
-      </div>
+      <GameOverScreen 
+        onTryAgain={handleTryAgain}
+        onBackToPuzzles={handleBackToPuzzles}
+      />
     );
   }
 
   return (
     <div className="w-full h-[calc(100vh-8rem)] relative">
-      {/* Display player's turn if in playing phase, otherwise preparation timer */}
-      {gamePhase === GAME_PHASES.PLAYING ? (
-        <PlayerTurnCard />
-      ) : (
-        <PreparationTimer />
-      )}
-      
-      {/* Game phase indicator */}
+      {/* Top UI components */}
+      {gamePhase === GAME_PHASES.PLAYING ? <PlayerTurnCard /> : <PreparationTimer />}
       <GamePhaseIndicator />
       
-      {/* Show a game status message */}
+      {/* Show opponent's turn message when relevant */}
       {gamePhase === GAME_PHASES.PLAYING && currentTurn !== playerColor && (
         <div className="absolute top-20 left-4 z-10 bg-black/50 text-white px-4 py-2 rounded-md">
           Opponent's turn
         </div>
       )}
       
-      {/* FEN notation button in preparation phase */}
+      {/* FEN display (only in preparation phase) */}
       {gamePhase === GAME_PHASES.PREPARATION && (
-        <div className="absolute top-20 right-4 z-10">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button 
-                size="sm"
-                variant="outline"
-                className="h-8 bg-black/50 text-white hover:bg-black/70"
-                onClick={() => setShowFEN(!showFEN)}
-              >
-                {showFEN ? 'Hide FEN' : 'Show FEN'}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Show/hide the FEN notation</p>
-            </TooltipContent>
-          </Tooltip>
-          
-          {/* Only show FEN when button is clicked */}
-          {showFEN && (
-            <div className="mt-2 bg-black/50 text-white p-2 rounded-md flex items-center">
-              <div className="mr-2 font-mono text-xs truncate max-w-[250px]">
-                {currentFEN}
-              </div>
-              <Button 
-                size="sm"
-                variant="ghost"
-                className="h-6 ml-auto text-xs"
-                onClick={copyFEN}
-              >
-                {copied ? 'Copied!' : 'Copy'}
-              </Button>
-            </div>
-          )}
-        </div>
+        <FenDisplay 
+          currentFEN={currentFEN}
+          showFEN={showFEN}
+          setShowFEN={setShowFEN}
+        />
       )}
       
-      {/* Back to puzzles button */}
+      {/* Back button */}
       <div className="absolute top-20 left-4 z-10">
         <Button 
           size="sm"
@@ -183,49 +242,22 @@ export default function PuzzlePage() {
         </Button>
       </div>
       
-      {/* Set a padding-bottom to make space for the piece selection card */}
+      {/* 3D Scene */}
       <div className="w-full h-full pb-24">
-        <Canvas 
-          camera={{ 
-            position: [0, 4, 8], 
-            fov: 50,
-            near: 0.1,
-            far: 1000
-          }}
-          shadows
-        >
-          <OrbitControls
-            ref={controlsRef}
-            enablePan={false}
-            enableRotate={!isDraggingPiece}
-            enableZoom={!isDraggingPiece}
-            // minPolarAngle={Math.PI / 4}
-            // maxPolarAngle={Math.PI / 2.5}
-            minDistance={6}
-            maxDistance={12}
-            rotateSpeed={0.5}
-            zoomSpeed={0.8}
-            // Limit horizontal rotation
-            minAzimuthAngle={-Math.PI / 4}
-            maxAzimuthAngle={Math.PI / 4}
-            // Target point (center of the board)
-            target={[0, 0, 0]}
-          />
-          <ambientLight intensity={0.6} />
-          <directionalLight position={[5, 10, 5]} intensity={0.8} castShadow />
-          
-          {/* Move the board up by adjusting its position */}
+        <SceneSetup isDraggingPiece={isDraggingPiece}>
           <group position={[0, 0, 0]}>
             <Board />
           </group>
           
-          {/* Position the piece selection at the bottom with a clear separation */}
           {gamePhase === GAME_PHASES.PREPARATION && (
             <group position={[0, 0.4, 6]}>
-              <ThreeDPieceSelection onDragStart={() => setIsDraggingPiece(true)} onDragEnd={() => setIsDraggingPiece(false)} />
+              <ThreeDPieceSelection 
+                onDragStart={() => setIsDraggingPiece(true)} 
+                onDragEnd={() => setIsDraggingPiece(false)} 
+              />
             </group>
           )}
-        </Canvas>
+        </SceneSetup>
       </div>
     </div>
   );

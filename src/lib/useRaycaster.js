@@ -29,10 +29,15 @@ export default function useRaycaster({
     const canvas = gl.domElement;
     
     const handleMouseMove = (event) => {
-      const x = (event.clientX / window.innerWidth) * 2 - 1;
-      const y = -(event.clientY / window.innerHeight) * 2 + 1;
+      // Get mouse position in normalized device coordinates (-1 to +1)
+      const rect = canvas.getBoundingClientRect();
+      const x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+      const y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
       
+      // Update raycaster with camera and mouse position
       raycaster.setFromCamera({ x, y }, camera);
+      
+      // Find all objects the ray intersects, with deep traversal
       const intersects = raycaster.intersectObjects(scene.children, true);
       
       // Find the first intersected object of each type
@@ -40,14 +45,28 @@ export default function useRaycaster({
       let pieceIntersect = null;
       
       for (const intersect of intersects) {
-        const userData = intersect.object.userData;
+        // Check the current object and traverse up to parent objects
+        let currentObj = intersect.object;
+        let foundUserData = false;
         
-        if (!cellIntersect && userData && userData.isCell) {
-          cellIntersect = intersect;
-        }
-        
-        if (!pieceIntersect && userData && userData.isPiece) {
-          pieceIntersect = intersect;
+        // Check up to 3 levels of parent objects for userData
+        for (let i = 0; i < 3; i++) {
+          if (!currentObj) break;
+          
+          const userData = currentObj.userData;
+          
+          if (!cellIntersect && userData && userData.isCell) {
+            cellIntersect = { object: currentObj };
+            foundUserData = true;
+          }
+          
+          if (!pieceIntersect && userData && userData.isPiece) {
+            pieceIntersect = { object: currentObj };
+            foundUserData = true;
+          }
+          
+          if (foundUserData) break;
+          currentObj = currentObj.parent;
         }
         
         if ((cellIntersect || !types.includes('cell')) && 
@@ -61,6 +80,7 @@ export default function useRaycaster({
         if (cellIntersect) {
           const { row, col } = cellIntersect.object.userData;
           setHoveredCell({ row, col });
+          console.log(`Raycaster detected cell at row ${row}, col ${col}`);
         } else {
           setHoveredCell(null);
         }
@@ -69,6 +89,7 @@ export default function useRaycaster({
       if (types.includes('piece')) {
         if (pieceIntersect) {
           const { pieceId, pieceType, pieceColor } = pieceIntersect.object.userData;
+          console.log(`Raycaster detected piece: ${pieceId} (${pieceType})`);
           setHoveredPiece({ id: pieceId, type: pieceType, color: pieceColor });
         } else {
           setHoveredPiece(null);

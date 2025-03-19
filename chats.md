@@ -1292,3 +1292,89 @@ Refine the board and piece selection area for better visual consistency and usab
 - Evaluate piece distribution with different piece type combinations
 - Add tooltips or guides for piece movement rules
 - Consider adding animation for piece placement success/failure
+
+## Piece Hover Tilt Effect and Console Cleanup
+
+### User Request
+Remove verbose console.log statements and add a tilt effect when pieces in the selection area are hovered or dragged.
+
+### Actions Taken
+1. Console Log Cleanup:
+   - Removed unnecessary console.log statements from Board.jsx
+   - Eliminated verbose debugging statements in ThreeDPieceSelection.jsx
+   - Created cleaner code with improved readability
+   - Maintained only essential logging for development purposes
+
+2. Piece Tilt Effect Implementation:
+   - Added 5-degree Y-axis tilt effect when pieces are hovered in selection area
+   - Implemented tilt effect during drag operations
+   - Reset rotation when drag ends
+   - Used THREE.MathUtils.degToRad for proper angle conversion
+   - Added pointer event handlers for hover state tracking
+
+3. Hover State Management:
+   - Added hoveredPiece state tracking for mouse interaction
+   - Implemented onPointerOver and onPointerOut event handlers
+   - Created conditional rotation calculation based on hover state
+   - Prevented tilt during active dragging to avoid visual conflicts
+
+### Tech Details
+- Used THREE.MathUtils.degToRad to convert 5 degrees to radians
+- Applied rotation directly to the group containing the piece
+- Created a rotation vector [0, THREE.MathUtils.degToRad(5), 0] for Y-axis tilt
+- Implemented conditional logic to apply tilt only when hovered and not being dragged
+- Added proper event propagation for consistent hover behavior
+
+### Next Steps
+- Consider adding subtle sound effects for hover and drag interactions
+- Evaluate adding additional visual feedback (shadow/glow) during hover
+- Test the tilt effect across different piece types for consistency
+- Consider adding slight scaling effect in addition to tilt
+- Explore adding transitional animations for smoother tilt effect
+
+## PuzzlePage Component Refactoring
+
+### User Request
+Reconsider the implementation of PuzzlePage.jsx and suggest a refactoring for a simpler implementation.
+
+### Actions Taken
+1. Component Extraction:
+   - Extracted `FenDisplay` as a separate component to handle FEN notation display
+   - Created a reusable `GameOverScreen` component for the game completion state
+   - Implemented a `SceneSetup` component to encapsulate the 3D scene configuration
+   - Organized the main page component to focus on orchestration rather than details
+
+2. State and Props Management:
+   - Simplified state management by focusing on essential states
+   - Improved props passing with focused component responsibilities
+   - Removed unused state variables (showSolution) and props
+   - Created clearer handler functions with specific purposes
+   - Enhanced the puzzle loading logic with a dedicated function
+
+3. Code Organization:
+   - Improved readability with proper component grouping
+   - Added clear section comments for better code navigation
+   - Simplified conditional rendering logic
+   - Streamlined event handlers and callbacks
+   - Created cleaner control flow with more predictable component behavior
+
+4. Bug Fixes and Improvements:
+   - Removed unnecessary console.error in favor of graceful navigation
+   - Simplified puzzle loading and error handling
+   - Improved component encapsulation for better maintainability
+   - Enhanced code reusability through proper component abstraction
+   - Maintained all existing functionality while reducing code complexity
+
+### Tech Details
+- Used component composition pattern to separate concerns
+- Applied React best practices for state management
+- Created self-contained components with clear responsibilities
+- Improved prop typing for better component interfaces
+- Enhanced rendering performance through optimized component structure
+
+### Next Steps
+- Consider adding component prop types (TypeScript/PropTypes)
+- Add transition animations between game states
+- Consider extracting more UI components for better reusability
+- Add loading states for asynchronous operations
+- Consider implementing component memoization for performance

@@ -1,6 +1,6 @@
-import { useRef, useEffect, useMemo } from 'react'
+import { useRef, useEffect, useMemo, useState } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
-import { Html } from '@react-three/drei'
+import { Html, DragControls } from '@react-three/drei'
 import { useGameContext } from '@/lib/game-context'
 import useRaycaster from '@/lib/useRaycaster'
 import * as THREE from 'three'
@@ -27,7 +27,11 @@ const mapPositionToBoard = (row, col) => {
 };
 
 export default function Board() {
-  const { gl } = useThree();
+  const { gl, scene, camera } = useThree();
+  const boardRef = useRef();
+  const pieceRefs = useRef({});
+  const dragControlsRef = useRef();
+  const [activeDragPiece, setActiveDragPiece] = useState(null);
   
   // Get data from context
   const context = useGameContext();
@@ -71,8 +75,12 @@ export default function Board() {
     allowedPhases: [GAME_PHASES.PREPARATION, GAME_PHASES.PLAYING]
   });
   
-  // Ref for the board
-  const boardRef = useRef();
+  // Log when hoveredPiece changes
+  useEffect(() => {
+    if (hoveredPiece) {
+      console.log('Board - Hovering piece:', hoveredPiece);
+    }
+  }, [hoveredPiece]);
   
   // Rotate board if player is black
   useEffect(() => {
@@ -104,42 +112,102 @@ export default function Board() {
     return allPieces;
   }, [pieces, opponentPieces, gamePhase, GAME_PHASES.PLAYING, GAME_PHASES.GAME_OVER]);
 
-  // Handle piece drag start
-  const handlePieceDragStart = (pieceId) => {
-    console.log("Piece drag started:", pieceId);
-  };
-  
-  // Handle piece dragging
-  const handlePieceDrag = (e, dragData) => {
-  };
-  
-  // Log FEN updates for debugging
+  // Set up drag controls after render
   useEffect(() => {
-    if (currentFEN) {
-      console.log("Board FEN updated:", currentFEN);
+    // Only create draggable controls for player pieces
+    const draggablePieces = Object.values(pieceRefs.current).filter(ref => 
+      ref && ref.userData && 
+      ref.userData.pieceColor === playerColor &&
+      (gamePhase === GAME_PHASES.PREPARATION || gamePhase === GAME_PHASES.PLAYING)
+    );
+    
+    if (draggablePieces.length > 0 && camera && gl) {
+      // Create the controls instance - this approach won't work
+      // We'll add a declarative DragControls in the render method instead
     }
-  }, [currentFEN]);
-  
-  // Handle piece drop
-  const handlePieceDrop = (e, dropData) => {
-    if (!dropData || !dropData.cellData) {
-      console.log("Board: Piece dropped outside the board");
-      return;
+  }, [camera, gl, scene, gamePhase, playerColor, placePiece, movePiece, piecesToRender]);
+
+  // Handle dragstart event
+  const handleDragStart = (e) => {
+    const obj = e.object;
+    setActiveDragPiece(obj.userData.pieceId);
+    document.body.style.cursor = 'grabbing';
+  };
+
+  // Handle drag event
+  const handleDrag = (e) => {
+    if (e.object) {
+      e.object.position.y = 0.1; // Lock the y-position
+    }
+  };
+
+  // Handle dragend event
+  const handleDragEnd = (e) => {
+    document.body.style.cursor = 'auto';
+    const obj = e.object;
+    const pieceId = obj.userData.pieceId;
+    
+    // Use raycasting to find the cell under the piece
+    const raycaster = new THREE.Raycaster();
+    raycaster.layers.set(1); // Use layer 1 for board cells
+    
+    // Cast ray down from the piece position
+    const origin = new THREE.Vector3(
+      obj.position.x,
+      obj.position.y + 1,
+      obj.position.z
+    );
+    const direction = new THREE.Vector3(0, -1, 0);
+    raycaster.set(origin, direction);
+    
+    // Find intersections with board cells
+    const intersects = raycaster.intersectObjects(
+      scene.children,
+      true
+    ).filter(hit => hit.object.userData.isCell);
+    
+    if (intersects.length > 0) {
+      const cellData = intersects[0].object.userData;
+      
+      // Calculate the center position of the cell
+      const centerX = cellData.col - 2;
+      const centerZ = cellData.row - 2;
+      
+      // Snap the piece to the center of the cell
+      obj.position.set(centerX, 0.1, centerZ);
+      
+      if (gamePhase === GAME_PHASES.PREPARATION) {
+        // In preparation phase, place the piece
+        placePiece(pieceId, { row: cellData.row, col: cellData.col });
+      } else if (gamePhase === GAME_PHASES.PLAYING) {
+        // In playing phase, move the piece
+        movePiece(pieceId, { row: cellData.row, col: cellData.col });
+      }
+    } else {
+      // If dropped outside the board, move back to original position
+      const piece = piecesToRender.find(p => p.id === pieceId);
+      if (piece && piece.position) {
+        const originalPosition = mapPositionToBoard(piece.position.row, piece.position.col);
+        obj.position.set(originalPosition[0], originalPosition[1], originalPosition[2]);
+      }
     }
     
-    const { cellData, pieceData } = dropData;
-    console.log("Board: Piece dropped:", { 
-      pieceId: pieceData.id, 
-      row: cellData.row, 
-      col: cellData.col 
-    });
-    
-    if (gamePhase === GAME_PHASES.PREPARATION) {
-      // In preparation phase, place the piece directly
-      placePiece(pieceData.id, { row: cellData.row, col: cellData.col });
-    } else if (gamePhase === GAME_PHASES.PLAYING) {
-      // In playing phase, move the piece
-      movePiece(pieceData.id, { row: cellData.row, col: cellData.col });
+    setActiveDragPiece(null);
+  };
+
+  // Get the draggable objects for DragControls
+  const draggableObjects = useMemo(() => {
+    return Object.values(pieceRefs.current).filter(ref => 
+      ref && ref.userData && 
+      ref.userData.pieceColor === playerColor &&
+      (gamePhase === GAME_PHASES.PREPARATION || gamePhase === GAME_PHASES.PLAYING)
+    );
+  }, [playerColor, gamePhase]);
+
+  // Register a piece ref
+  const registerPiece = (id, ref) => {
+    if (ref) {
+      pieceRefs.current[id] = ref;
     }
   };
 
@@ -153,6 +221,17 @@ export default function Board() {
 
       {/* Axes Helper */}
       <axesHelper args={[5]} position={[0, 0, 0]} />
+
+      {/* Add declarative DragControls */}
+      {draggableObjects.length > 0 && (
+        <DragControls
+          transformGroup
+          args={[draggableObjects, camera, gl.domElement]}
+          onDragStart={handleDragStart}
+          onDrag={handleDrag}
+          onDragEnd={handleDragEnd}
+        />
+      )}
 
       {/* Board cells */}
       {Array.from({ length: 5 }).map((_, row) =>
@@ -170,7 +249,7 @@ export default function Board() {
             <group key={`${row}-${col}`}>
               <Square
                 position={position}
-                color={isLight ? '#f0d9b5' : '#b58863'}
+                color={isLight ? '#FFFFFF' : '#4B4B4B'}
                 row={row}
                 col={col}
                 isHovered={isHovered}
@@ -200,12 +279,17 @@ export default function Board() {
         })
       )}
 
-      {/* Render pieces - use a conditional to ensure piecesToRender is an array */}
+      {/* Render pieces */}
       {Array.isArray(piecesToRender) && piecesToRender.map((piece, index) => {
         if (!piece) return null;
         
         // Check if this piece is hovered
         const isHovered = hoveredPiece && hoveredPiece.id === piece.id;
+        
+        // Debug hover state
+        if (isHovered) {
+          console.log(`Board rendering piece ${piece.id} as hovered`);
+        }
         
         // Only player pieces should be draggable
         const isDraggable = piece.color === playerColor && 
@@ -226,10 +310,10 @@ export default function Board() {
             position={piecePosition}
             scale={[12, 12, 12]}
             visible={!!piece.position}
-            draggable={isDraggable}
-            onDragStart={() => handlePieceDragStart(piece.id)}
-            onDrag={handlePieceDrag}
-            onDragEnd={handlePieceDrop}
+            registerPiece={registerPiece}
+            isBeingDragged={activeDragPiece === piece.id}
+            isDraggable={isDraggable}
+            isHovered={isHovered}
           />
         );
       })}

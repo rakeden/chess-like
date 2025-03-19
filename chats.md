@@ -836,3 +836,32 @@ Replace the bounce animation with double rotation and ease-out growth, and remov
 - Add subtle sound effects synchronized with the rotation animation
 - Fine-tune the ease-out timing for optimal visual appeal
 - Consider adding color-based glow effects for valid/invalid placements
+
+## Piece Floating Animation Removal
+
+### User Request
+Remove the subtle floating animation from chess pieces to create a more stable appearance.
+
+### Actions Taken
+1. Animation Simplification:
+   - Removed the subtle floating animation where pieces bobbed up and down
+   - Eliminated the sine wave position adjustment in the useFrame animation loop
+   - Created a more stable, static appearance for all pieces
+   - Maintained the initial appearance animation (rotation and scale)
+2. Code Cleanup:
+   - Removed the conditional animation code that checked for isDragging state
+   - Simplified the animation loop by focusing only on essential animations
+   - Created a cleaner visual experience with pieces that stay firmly in position
+   - Ensured consistent positioning for better visual clarity
+
+### Tech Details
+- Removed the floating animation code: `meshRef.current.position.y = 0.2 + Math.sin(state.clock.elapsedTime * 2) * 0.05;`
+- Eliminated the conditional check that disabled floating during dragging
+- Kept the initial appearance animations (rotation and scaling) intact
+- Maintained the proper drag handling without unnecessary position adjustments
+
+### Next Steps
+- Consider adding subtle effects for piece interaction (clicks/taps)
+- Add more pronounced visual feedback for valid/invalid moves
+- Implement sound effects to replace the visual motion cues
+- Consider adding subtle shadow effects for better depth perception

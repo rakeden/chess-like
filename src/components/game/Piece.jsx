@@ -177,11 +177,6 @@ export default function Piece({
         : 1;
       meshRef.current.scale.setScalar(baseScale * easedScale);
     }
-    
-    // Add a subtle floating animation (only if not being dragged)
-    if (!meshRef.current.userData.isDragging) {
-      meshRef.current.position.y = 0.2 + Math.sin(state.clock.elapsedTime * 2) * 0.05;
-    }
   });
   
   // Handle pointer events

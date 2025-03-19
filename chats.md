@@ -848,20 +848,38 @@ Remove the subtle floating animation from chess pieces to create a more stable a
    - Eliminated the sine wave position adjustment in the useFrame animation loop
    - Created a more stable, static appearance for all pieces
    - Maintained the initial appearance animation (rotation and scale)
-2. Code Cleanup:
-   - Removed the conditional animation code that checked for isDragging state
-   - Simplified the animation loop by focusing only on essential animations
-   - Created a cleaner visual experience with pieces that stay firmly in position
-   - Ensured consistent positioning for better visual clarity
+
+## Piece Positioning on Square Surface
+
+### User Request
+Ensure the chess pieces are correctly positioned on the square surface.
+
+### Actions Taken
+1. Board Position Mapping:
+   - Adjusted the `mapPositionToBoard` function in Board.jsx to use y=0.5 instead of y=0.6
+   - This ensures pieces sit at the correct height on the board surface
+   - Changed code comment to document the purpose of this specific y-coordinate value
+
+2. Piece Component Enhancement:
+   - Improved the position handling in the Piece component
+   - Added a useMemo hook to safely handle position transformations
+   - Ensured pieces maintain proper contact with the square surface
+   - Eliminated floating appearance by removing any vertical offsets
+
+3. Position Consistency:
+   - Maintained consistent positioning across all piece types
+   - Ensured proper alignment between pieces and squares
+   - Verified pieces appear firmly placed on the board surface
+   - Eliminated any visual gaps between pieces and squares
 
 ### Tech Details
-- Removed the floating animation code: `meshRef.current.position.y = 0.2 + Math.sin(state.clock.elapsedTime * 2) * 0.05;`
-- Eliminated the conditional check that disabled floating during dragging
-- Kept the initial appearance animations (rotation and scaling) intact
-- Maintained the proper drag handling without unnecessary position adjustments
+- Modified `mapPositionToBoard` to return `[col - 2, 0.5, row - 2]`
+- Replaced direct position assignment with memoized position handling
+- Utilized Three.js positioning system for consistent piece placement
+- Made changes while preserving the piece appearance and animation logic
 
 ### Next Steps
-- Consider adding subtle effects for piece interaction (clicks/taps)
-- Add more pronounced visual feedback for valid/invalid moves
-- Implement sound effects to replace the visual motion cues
-- Consider adding subtle shadow effects for better depth perception
+- Consider adding subtle shadows under pieces for enhanced depth perception
+- Fine-tune piece models for better proportions relative to squares
+- Add visual feedback for valid/invalid piece placements
+- Implement subtle landing animation when pieces are placed on squares

@@ -3,6 +3,8 @@ import { useFrame, useThree } from '@react-three/fiber'
 import { useGameContext } from '@/lib/game-context'
 import useRaycaster from '@/lib/useRaycaster'
 import * as THREE from 'three'
+import { boardToFEN } from '@/lib/stockfish-utils'
+import { Html } from '@react-three/drei'
 import Piece from './Piece'
 import Square from './Square'
 
@@ -14,7 +16,15 @@ const BOARD_OFFSET = (BOARD_SIZE * SQUARE_SIZE) / 2 - SQUARE_SIZE / 2
 const mapPositionToBoard = (row, col) => {
   // Adjust position to center the piece on a square
   // For 5x5 board with 1x1 squares, we offset by 2 to center (0,0,0) on the middle
-  return [col - 2, 0.6, row - 2];
+  // Use y=0.5 to ensure pieces sit correctly on the board surface
+  return [col - 2, 0.5, row - 2];
+};
+
+// Helper function to get coordinate label
+const getCoordinateLabel = (row, col) => {
+  const files = ['A', 'B', 'C', 'D', 'E'];
+  const ranks = ['5', '4', '3', '2', '1'];
+  return `${files[col]}${ranks[row]}`;
 };
 
 export default function Board() {
@@ -38,7 +48,8 @@ export default function Board() {
     selectPiece: context?.selectPiece || (() => {}),
     selectCell: context?.selectCell || (() => {}),
     movePiece: context?.movePiece || (() => {}),
-    placePiece: context?.placePiece || (() => {})
+    placePiece: context?.placePiece || (() => {}),
+    currentFEN: context?.currentFEN || ''
   };
   
   const { 
@@ -50,7 +61,8 @@ export default function Board() {
     selectPiece,
     selectCell,
     movePiece,
-    placePiece
+    placePiece,
+    currentFEN
   } = safeContext;
   
   // Use the raycaster hook to detect hovering over pieces and cells
@@ -105,6 +117,13 @@ export default function Board() {
     // console.log("Piece dragging:", dragData);
   };
   
+  // Log FEN updates for debugging
+  useEffect(() => {
+    if (currentFEN) {
+      console.log("Board FEN updated:", currentFEN);
+    }
+  }, [currentFEN]);
+  
   // Handle piece drop
   const handlePieceDrop = (e, dropData) => {
     if (!dropData || !dropData.cellData) {
@@ -149,15 +168,35 @@ export default function Board() {
             (gamePhase === GAME_PHASES.PREPARATION || gamePhase === GAME_PHASES.PLAYING);
           
           return (
-            <Square
-              key={`${row}-${col}`}
-              position={position}
-              color={isLight ? '#f0d9b5' : '#b58863'}
-              row={row}
-              col={col}
-              isHovered={isHovered}
-              size={SQUARE_SIZE}
-            />
+            <group key={`${row}-${col}`}>
+              <Square
+                position={position}
+                color={isLight ? '#f0d9b5' : '#b58863'}
+                row={row}
+                col={col}
+                isHovered={isHovered}
+                size={SQUARE_SIZE}
+              />
+              <group position={position}>
+                <Html
+                  position={[0.35, 0.01, 0.35]}
+                  center
+                  sprite
+                  transform
+                  scale={0.15}
+                  style={{
+                    color: isLight ? '#b58863' : '#f0d9b5',
+                    fontFamily: 'monospace',
+                    fontSize: '10px',
+                    fontWeight: 'bold',
+                    userSelect: 'none',
+                    pointerEvents: 'none'
+                  }}
+                >
+                  {getCoordinateLabel(row, col)}
+                </Html>
+              </group>
+            </group>
           );
         })
       )}

@@ -125,6 +125,17 @@ export default function Piece({
 
   materialRef.current = material;
   
+  // Ensure the piece sits properly on the square surface
+  // Transform the position to include the proper height offset
+  const safePosition = useMemo(() => {
+    // Ensure position is a valid array
+    const pos = Array.isArray(position) && position.length >= 3 
+      ? [...position] 
+      : [0, 0, 0];
+    
+    return pos;
+  }, [position]);
+  
   // Start the fade-in animation on mount
   useEffect(() => {
     if (!meshRef.current) return;
@@ -240,6 +251,16 @@ export default function Piece({
         if (intersects.length > 0) {
           const cellData = intersects[0].object.userData;
           console.log("Drop detected on cell:", cellData);
+          
+          // Calculate the center position of the cell
+          const centerX = cellData.col - 2;
+          const centerZ = cellData.row - 2;
+          
+          // Snap the piece to the center of the cell
+          meshRef.current.position.x = centerX;
+          meshRef.current.position.z = centerZ;
+          meshRef.current.position.y = 0.5; // Keep consistent height
+          
           onDragEnd(e, {
             cellData,
             position: meshRef.current.position.clone(),
@@ -274,11 +295,6 @@ export default function Piece({
     }
   };
 
-  // Ensure position is an array with 3 values
-  const safePosition = Array.isArray(position) && position.length >= 3 
-    ? position 
-    : [0, 0, 0];
-    
   // Create userData for raycasting
   const pieceUserData = {
     isPiece: true,

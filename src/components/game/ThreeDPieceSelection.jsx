@@ -97,7 +97,7 @@ export default function ThreeDPieceSelection({ onDragStart, onDragEnd }) {
     // Find the piece type that was clicked
     const pieceType = pieceTypesWithCount.find(p => p.id === pieceId);
     
-    if (pieceType && pieceType.count > 0) {
+    if (pieceType) {
       // Get the first available piece ID of this type
       const availablePieceId = pieceType.allPieceIds[0];
       setDraggingPiece(availablePieceId);

@@ -723,3 +723,46 @@ Implement Three.js raycasting to detect hovering over chess pieces and cells on 
 - Add visual indicators for valid move destinations
 - Enhance raycasting precision for better user experience
 - Implement touch support for mobile devices
+
+## DragControls Implementation for Chess Pieces
+
+### User Request
+Implement drag and drop functionality for chess pieces using the DragControls from @react-three/drei for both the chess board and piece selection area.
+
+### Actions Taken
+1. Enhanced the Piece component with DragControls:
+   - Added DragControls wrapper from @react-three/drei for draggable pieces
+   - Implemented conditional dragging based on the piece owner (only player pieces)
+   - Added drag start/drag/drop event handlers for consistent interaction
+   - Created smooth animations with bounce effect when pieces appear
+   - Added fade-in effect for all pieces using opacity animation
+2. Updated the Board component:
+   - Modified piece rendering to include draggable property for player's pieces
+   - Added proper drag event handlers for piece movement
+   - Implemented raycasting to detect board cells during drag operations
+   - Created clear visual feedback during the drag process
+3. Improved ThreeDPieceSelection component:
+   - Replaced custom drag implementation with the DragControls from @react-three/drei
+   - Removed duplicate code and manual event tracking
+   - Enhanced the piece selection UI with new drag functionality
+   - Improved the raycasting for piece-board interactions
+4. Enhanced drag feedback:
+   - Added cursor changes during drag operations (grab/grabbing)
+   - Implemented pause in floating animation during drag
+   - Created smooth transitions between dragging states
+   - Ensured consistent UI state during drag operations
+
+### Tech Details
+- Used autoTransform property of DragControls for automatic position updates
+- Implemented proper userData for both pieces and board cells for accurate raycasting
+- Created a unified drag interaction model across the entire application
+- Ensured the preparation timer correctly pauses during drag operations
+- Optimized the rendering of pieces with complex geometries for smooth interactions
+
+### Next Steps
+- Add visual feedback for valid/invalid drop zones
+- Implement piece capture animations
+- Add sound effects for piece movement and capture
+- Optimize drag performance for complex pieces
+- Implement touch support for mobile devices
+- Add visual feedback for illegal moves

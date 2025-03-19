@@ -29,7 +29,9 @@ export default function Board() {
       GAME_OVER: 'gameOver'
     },
     selectPiece: context?.selectPiece || (() => {}),
-    selectCell: context?.selectCell || (() => {})
+    selectCell: context?.selectCell || (() => {}),
+    movePiece: context?.movePiece || (() => {}),
+    placePiece: context?.placePiece || (() => {})
   };
   
   const { 
@@ -39,7 +41,9 @@ export default function Board() {
     gamePhase, 
     GAME_PHASES,
     selectPiece,
-    selectCell
+    selectCell,
+    movePiece,
+    placePiece
   } = safeContext;
   
   // Debug the values we're using
@@ -57,28 +61,7 @@ export default function Board() {
     allowedPhases: [GAME_PHASES.PREPARATION, GAME_PHASES.PLAYING]
   });
   
-  // Add click handler for the canvas
-  useEffect(() => {
-    const handleClick = () => {
-      // If we have a hovered piece during the playing phase, select it
-      if (gamePhase === GAME_PHASES.PLAYING && hoveredPiece) {
-        selectPiece(hoveredPiece.id);
-      }
-      
-      // If we have a hovered cell during preparation or playing, select it
-      if ((gamePhase === GAME_PHASES.PREPARATION || gamePhase === GAME_PHASES.PLAYING) && hoveredCell) {
-        selectCell(hoveredCell.row, hoveredCell.col);
-      }
-    };
-    
-    const canvas = gl.domElement;
-    canvas.addEventListener('click', handleClick);
-    
-    return () => {
-      canvas.removeEventListener('click', handleClick);
-    };
-  }, [gl, gamePhase, GAME_PHASES, hoveredCell, hoveredPiece, selectPiece, selectCell]);
-  
+  // Ref for the board
   const boardRef = useRef();
   
   // Rotate board if player is black
@@ -91,39 +74,60 @@ export default function Board() {
       }
     }
   }, [playerColor]);
-
-  // Gentle floating animation 
+  
+  // Gentle floating animation for the board
   useFrame(({ clock }) => {
     if (boardRef.current) {
       boardRef.current.position.y = Math.sin(clock.getElapsedTime() * 0.5) * 0.05;
     }
   });
-
-  // Determine which pieces to render based on game phase
+  
+  // Combine player and opponent pieces
   const piecesToRender = useMemo(() => {
-    try {
-      // Start with player pieces
-      let visiblePieces = pieces.map(piece => ({
-        ...piece,
-        color: playerColor
-      }));
-      
-      // Add opponent pieces if in playing or game over phase
-      if (gamePhase === GAME_PHASES.PLAYING || gamePhase === GAME_PHASES.GAME_OVER) {
-        const visibleOpponentPieces = opponentPieces.map(piece => ({
-          ...piece,
-          color: playerColor === 'white' ? 'black' : 'white'
-        }));
-        
-        visiblePieces = [...visiblePieces, ...visibleOpponentPieces];
-      }
-      
-      return visiblePieces;
-    } catch (error) {
-      console.error("Error preparing pieces to render:", error);
-      return [];
+    const allPieces = [...(pieces || [])];
+    
+    // Only show opponent pieces during PLAYING or GAME_OVER phases
+    if (gamePhase === GAME_PHASES.PLAYING || gamePhase === GAME_PHASES.GAME_OVER) {
+      allPieces.push(...(opponentPieces || []));
     }
-  }, [pieces, opponentPieces, playerColor, gamePhase, GAME_PHASES]);
+    
+    return allPieces;
+  }, [pieces, opponentPieces, gamePhase, GAME_PHASES.PLAYING, GAME_PHASES.GAME_OVER]);
+
+  // Handle piece drag start
+  const handlePieceDragStart = (pieceId) => {
+    console.log("Piece drag started:", pieceId);
+    // You could add any drag start logic here
+  };
+  
+  // Handle piece dragging
+  const handlePieceDrag = (e, dragData) => {
+    // You could add any logic for during drag here
+    // console.log("Piece dragging:", dragData);
+  };
+  
+  // Handle piece drop
+  const handlePieceDrop = (e, dropData) => {
+    if (!dropData || !dropData.cellData) {
+      console.log("Piece dropped outside the board");
+      return;
+    }
+    
+    const { cellData, pieceData } = dropData;
+    console.log("Piece dropped:", { 
+      pieceId: pieceData.id, 
+      row: cellData.row, 
+      col: cellData.col 
+    });
+    
+    if (gamePhase === GAME_PHASES.PREPARATION) {
+      // In preparation phase, place the piece directly
+      placePiece(pieceData.id, { row: cellData.row, col: cellData.col });
+    } else if (gamePhase === GAME_PHASES.PLAYING) {
+      // In playing phase, move the piece
+      movePiece(pieceData.id, { row: cellData.row, col: cellData.col });
+    }
+  };
 
   return (
     <group ref={boardRef}>
@@ -166,6 +170,10 @@ export default function Board() {
         // Check if this piece is hovered
         const isHovered = hoveredPiece && hoveredPiece.id === piece.id;
         
+        // Only player pieces should be draggable
+        const isDraggable = piece.color === playerColor && 
+                          (gamePhase === GAME_PHASES.PREPARATION || gamePhase === GAME_PHASES.PLAYING);
+        
         return (
           <Piece
             key={`${piece.id || index}-${piece.position ? `${piece.position.row}-${piece.position.col}` : 'hand'}`}
@@ -180,6 +188,10 @@ export default function Board() {
             }
             scale={[0.8, 0.8, 0.8]}
             visible={!!piece.position}
+            draggable={isDraggable}
+            onDragStart={() => handlePieceDragStart(piece.id)}
+            onDrag={handlePieceDrag}
+            onDragEnd={handlePieceDrop}
           />
         );
       })}

@@ -1,11 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Canvas } from '@react-three/fiber';
-import { OrbitControls } from '@react-three/drei';
+import { Application, extend } from '@pixi/react';
+import { Container } from 'pixi.js';
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import Board from '@/components/game/Board';
 import PieceBench from '@/components/game/PieceBench';
+import { loadPieceTextures } from '@/utils/pieceTextures';
+
+// Extend the Container component for use in JSX
+extend({ Container });
 
 // Separated component for FEN display
 const FenDisplay = ({ currentFEN, showFEN, setShowFEN }) => {
@@ -55,63 +59,55 @@ const FenDisplay = ({ currentFEN, showFEN, setShowFEN }) => {
   );
 };
 
-// Camera and lighting setup as a separate component
-const SceneSetup = ({ children, isDraggingPiece }) => {
-  return (
-    <Canvas 
-      camera={{ 
-        position: [0, 4, 8],
-        fov: 45,
-        near: 0.1,
-        far: 1000
-      }}
-      shadows
-    >
-      <OrbitControls
-        enablePan={!isDraggingPiece}
-        enableRotate={!isDraggingPiece}
-        enableZoom={!isDraggingPiece}
-        minPolarAngle={Math.PI / 3}
-        maxPolarAngle={Math.PI / 2.2}
-        minDistance={4}
-        maxDistance={8}
-        rotateSpeed={0.5}
-        zoomSpeed={0.8}
-        minAzimuthAngle={-Math.PI / 6}
-        maxAzimuthAngle={Math.PI / 6}
-        target={[0, 0, 0]}
-      />
-      <ambientLight intensity={0.4} />
-      <directionalLight 
-        position={[3, 8, 4]} 
-        intensity={1.2}
-        castShadow
-        shadow-mapSize-width={2048}
-        shadow-mapSize-height={2048}
-      />
-      <directionalLight
-        position={[-2, 3, -2]}
-        intensity={0.3}
-        castShadow={false}
-      />
-      {children}
-    </Canvas>
-  );
-};
-
 export default function PuzzlePage() {
   const { puzzleId } = useParams();
   const navigate = useNavigate();
   const [showFEN, setShowFEN] = useState(false);
   const [isDraggingPiece, setIsDraggingPiece] = useState(false);
+  const [pieceTextures, setPieceTextures] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const boardRef = useRef(null);
+  
+  // Load piece textures when component mounts
+  useEffect(() => {
+    const loadTextures = async () => {
+      try {
+        const textures = await loadPieceTextures();
+        setPieceTextures(textures);
+      } catch (error) {
+        console.error('Failed to load piece textures:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    loadTextures();
+  }, []);
   
   // Mock data for testing - replace with props or context
-  const mockFEN = '5/5/5/5/5 w - - 0 1';
+  const mockFEN = 'r1k1r/1ppp1/5/5/2K2 w - - 0 1';  // Using puzzle-1 FEN
   const mockPlayerColor = 'white';
+  const squareSize = 80;
   
   const handleBackToPuzzles = () => {
     navigate('/puzzles');
   };
+  
+  // Stage options for Pixi.js
+  const stageOptions = {
+    antialias: true,
+    backgroundAlpha: 0,
+    autoDensity: true,
+    resolution: window.devicePixelRatio || 1
+  };
+
+  if (isLoading) {
+    return (
+      <div className="w-full h-[calc(100vh-8rem)] flex items-center justify-center">
+        <div className="text-lg">Loading pieces...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full h-[calc(100vh-8rem)] relative">
@@ -134,25 +130,30 @@ export default function PuzzlePage() {
         </Button>
       </div>
       
-      {/* 3D Scene */}
+      {/* 2D Game Scene using Pixi */}
       <div className="w-full h-full pb-24">
-        <SceneSetup isDraggingPiece={isDraggingPiece}>
-          <group position={[0, 0, 0]}>
-            <Board 
-              fen={mockFEN}
-              playerColor={mockPlayerColor}
-              onPieceDragStart={() => setIsDraggingPiece(true)}
-              onPieceDragEnd={() => setIsDraggingPiece(false)}
-            />
-          </group>
-          
-          <group position={[0, 0.4, 6]}>
-            <PieceBench 
-              onPieceDragStart={() => setIsDraggingPiece(true)}
-              onPieceDragEnd={() => setIsDraggingPiece(false)}
-            />
-          </group>
-        </SceneSetup>
+        <Application 
+          width={window.innerWidth} 
+          height={window.innerHeight - 128}
+          options={stageOptions}
+        >
+          <Board 
+            ref={boardRef}
+            fen={mockFEN}
+            playerColor={mockPlayerColor}
+            onPieceDragStart={() => setIsDraggingPiece(true)}
+            onPieceDragEnd={() => setIsDraggingPiece(false)}
+            squareSize={squareSize}
+            pieceTextures={pieceTextures}
+          />
+          <PieceBench 
+            onPieceDragStart={() => setIsDraggingPiece(true)}
+            onPieceDragEnd={() => setIsDraggingPiece(false)}
+            boardRef={boardRef}
+            squareSize={squareSize}
+            pieceTextures={pieceTextures}
+          />
+        </Application>
       </div>
     </div>
   );

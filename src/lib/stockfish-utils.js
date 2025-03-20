@@ -76,14 +76,20 @@ export function boardToFEN(board, whitePieces, blackPieces, activeColor = 'w') {
 // Helper function to convert a FEN character to piece type
 const fenCharToPiece = (char) => {
   const pieceMap = {
-    'p': 'pawn',
-    'n': 'knight',
-    'b': 'bishop',
-    'r': 'rook',
-    'q': 'queen',
-    'k': 'king'
+    'p': { type: 'pawn', color: 'black' },
+    'n': { type: 'knight', color: 'black' },
+    'b': { type: 'bishop', color: 'black' },
+    'r': { type: 'rook', color: 'black' },
+    'q': { type: 'queen', color: 'black' },
+    'k': { type: 'king', color: 'black' },
+    'P': { type: 'pawn', color: 'white' },
+    'N': { type: 'knight', color: 'white' },
+    'B': { type: 'bishop', color: 'white' },
+    'R': { type: 'rook', color: 'white' },
+    'Q': { type: 'queen', color: 'white' },
+    'K': { type: 'king', color: 'white' }
   };
-  return pieceMap[char.toLowerCase()];
+  return pieceMap[char];
 };
 
 // Convert FEN notation to board and pieces arrays
@@ -105,16 +111,18 @@ export const fenToBoard = (fen) => {
       if (/[1-5]/.test(char)) {
         colIndex += parseInt(char);
       } else {
-        const isWhite = char === char.toUpperCase();
-        const pieceType = fenCharToPiece(char);
-        const color = isWhite ? 'white' : 'black';
+        const pieceInfo = fenCharToPiece(char);
+        if (!pieceInfo) continue;
+
         const position = { row: rowIndex, col: colIndex };
         
         const piece = {
-          id: `${pieceType}-${rowIndex}-${colIndex}-${color}`,
-          type: pieceType,
-          color: color,
-          position: position
+          id: `${pieceInfo.type}-${rowIndex}-${colIndex}-${pieceInfo.color}`,
+          type: pieceInfo.type,
+          color: pieceInfo.color,
+          position: position,
+          // Add the FEN character for easy texture mapping
+          fenChar: char
         };
         
         board[rowIndex][colIndex] = piece;

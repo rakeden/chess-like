@@ -1,172 +1,69 @@
-import { useRef, useMemo, useEffect, useState } from 'react';
-import { useFrame } from '@react-three/fiber';
-import { useGLTF } from '@react-three/drei';
-import * as THREE from 'three';
+import React from 'react';
+import { extend, useApplication, useTick } from '@pixi/react';
+import { Sprite } from 'pixi.js';
+import { getPieceKey } from '@/utils/pieceTextures';
 
-// Import GLB models
-import BishopModel from '@/assets/Bishop.glb';
-import KingModel from '@/assets/King.glb';
-import KnightModel from '@/assets/Knight.glb';
-import PawnModel from '@/assets/Pawn.glb';
-import QueenModel from '@/assets/Queen.glb';
-import RookModel from '@/assets/Rook.glb';
+// Extend Sprite for use in JSX
+extend({ Sprite });
 
-// Cache the models
-useGLTF.preload(BishopModel);
-useGLTF.preload(KingModel);
-useGLTF.preload(KnightModel);
-useGLTF.preload(PawnModel);
-useGLTF.preload(QueenModel);
-useGLTF.preload(RookModel);
-
-// Map piece types to their models
-const PIECE_MODELS = {
-  bishop: BishopModel,
-  king: KingModel,
-  knight: KnightModel,
-  pawn: PawnModel,
-  queen: QueenModel,
-  rook: RookModel
-};
-
-// Animation easing functions
-const easeOutQuad = (t) => 1 - (1 - t) * (1 - t);
-
-export default function Piece({ 
-  type = 'pawn', 
-  color = 'white', 
-  position = [0, 0, 0], 
-  scale = [1, 1, 1],
-  isInteractive = false,
-  isDisabled = false,
-  onReturnToPosition = () => {}
-}) {
-  const groupRef = useRef();
-  const [opacity, setOpacity] = useState(isDisabled ? 0.3 : 0);
-  const [animScale, setAnimScale] = useState(0.01);
-  const animationStartTimeRef = useRef(null);
+const Piece = React.forwardRef(({ piece, x, y, scale = 1, draggable = true, onDragStart, onDragEnd, pieceTextures }, ref) => {
+  const { app } = useApplication();
   
-  // Memoize initial position
-  const initialPosition = useMemo(() => {
-    return Array.isArray(position) ? [...position] : [position.x, position.y, position.z];
-  }, []); // Empty deps array means this only runs once on mount
-  
-  const ANIMATION_DURATION = 1.2;
-  const RETURN_ANIMATION_DURATION = 0.3;
-  
-  // Function to animate return to initial position
-  const returnToPosition = (immediate = false) => {
-    if (!groupRef.current) return;
-    
-    if (immediate) {
-      groupRef.current.position.set(...initialPosition);
-      onReturnToPosition(initialPosition);
-      return;
-    }
-    
-    const startPos = new THREE.Vector3(
-      groupRef.current.position.x,
-      groupRef.current.position.y,
-      groupRef.current.position.z
-    );
-    const endPos = new THREE.Vector3(...initialPosition);
-    const startTime = Date.now();
-    
-    const animate = () => {
-      const now = Date.now();
-      const elapsed = (now - startTime) / 1000;
-      const progress = Math.min(elapsed / RETURN_ANIMATION_DURATION, 1);
-      
-      if (progress < 1 && groupRef.current) {
-        const t = easeOutQuad(progress);
-        groupRef.current.position.lerpVectors(startPos, endPos, t);
-        requestAnimationFrame(animate);
-      } else if (groupRef.current) {
-        groupRef.current.position.copy(endPos);
-        onReturnToPosition(initialPosition);
-      }
-    };
-    
-    animate();
+  // Get the texture key for this piece
+  const textureKey = getPieceKey(piece);
+  const texture = pieceTextures?.[textureKey];
+
+  if (!texture) {
+    console.warn(`No texture found for piece: ${textureKey}`);
+    return null;
+  }
+
+  // Event handlers for dragging
+  const handleDragStart = (event) => {
+    if (!draggable) return;
+    const sprite = event.currentTarget;
+    sprite.alpha = 0.5;
+    sprite.dragging = true;
+    sprite.eventData = event.data;
+    if (onDragStart) onDragStart(event);
   };
-  
-  // Expose returnToPosition function through ref
-  useEffect(() => {
-    if (groupRef.current) {
-      groupRef.current.returnToPosition = returnToPosition;
-    }
-  }, []);
-  
-  // Load and clone the model
-  const { scene: modelScene } = useGLTF(PIECE_MODELS[type] || PIECE_MODELS.pawn);
-  const model = useMemo(() => {
-    const clonedScene = modelScene.clone();
-    clonedScene.traverse((node) => {
-      if (node.isMesh) {
-        node.material = new THREE.MeshStandardMaterial({
-          color: color === 'white' ? 0xFFFFFF : 0x202020,
-          emissive: color === 'white' ? 0x303030 : 0x101010,
-          metalness: color === 'white' ? 0.2 : 0.4,
-          roughness: color === 'white' ? 0.3 : 0.6,
-          transparent: true,
-          opacity: opacity
-        });
-      }
-    });
-    return clonedScene;
-  }, [modelScene, color, opacity]);
 
-  // Start the appearance animation
-  useEffect(() => {
-    if (!groupRef.current) return;
-    animationStartTimeRef.current = Date.now() / 1000;
-  }, []);
-  
-  // Handle animations
-  useFrame(() => {
-    if (!groupRef.current || !animationStartTimeRef.current) return;
-    
-    const currentTime = Date.now() / 1000;
-    const elapsedTime = currentTime - animationStartTimeRef.current;
-    const progress = Math.min(elapsedTime / ANIMATION_DURATION, 1);
-    
-    // Update scale and opacity during appearance
-    const currentScale = easeOutQuad(progress);
-    setAnimScale(currentScale);
-    setOpacity(isDisabled ? 0.3 : currentScale);
-    
-    // Add rotation during appearance
-    if (progress < 1) {
-      groupRef.current.rotation.y = 4 * Math.PI * easeOutQuad(progress);
-    } else {
-      groupRef.current.rotation.y = 0;
-    }
-  });
-
-  // Handle hover interactions
-  const handlePointerOver = (e) => {
-    if (isInteractive && !isDisabled) {
-      e.stopPropagation();
-      document.body.style.cursor = 'pointer';
-    }
+  const handleDragEnd = (event) => {
+    if (!draggable) return;
+    const sprite = event.currentTarget;
+    sprite.alpha = 1;
+    sprite.dragging = false;
+    sprite.eventData = null;
+    if (onDragEnd) onDragEnd(event);
   };
-  
-  const handlePointerOut = (e) => {
-    if (isInteractive && !isDisabled) {
-      e.stopPropagation();
-      document.body.style.cursor = 'auto';
+
+  const handleDragMove = (event) => {
+    if (!draggable) return;
+    const sprite = event.currentTarget;
+    if (sprite.dragging) {
+      const newPosition = sprite.eventData.getLocalPosition(sprite.parent);
+      sprite.x = newPosition.x;
+      sprite.y = newPosition.y;
     }
   };
 
   return (
-    <group
-      ref={groupRef}
-      position={position}
-      scale={scale.map(s => s * animScale)}
-      onPointerOver={handlePointerOver}
-      onPointerOut={handlePointerOut}
-    >
-      <primitive object={model} />
-    </group>
+    <pixiSprite
+      ref={ref}
+      texture={texture}
+      x={x}
+      y={y}
+      anchor={0.5}
+      scale={scale}
+      interactive={draggable}
+      pointerdown={handleDragStart}
+      pointerup={handleDragEnd}
+      pointerupoutside={handleDragEnd}
+      pointermove={handleDragMove}
+    />
   );
-} 
+});
+
+Piece.displayName = 'Piece';
+
+export default Piece; 

@@ -1,120 +1,93 @@
-import { useRef, useEffect, useMemo } from 'react'
-import { useFrame, useThree } from '@react-three/fiber'
-import { DragControls } from '@react-three/drei'
-import * as THREE from 'three'
-import Square from './Square'
-import Piece from './Piece'
+import React, { useRef, useState, useEffect, forwardRef } from 'react';
+import { extend, useApplication, useTick } from '@pixi/react';
+import { Container, Graphics } from 'pixi.js';
 import { fenToBoard } from '@/lib/stockfish-utils';
+import Square from './Square';
+import Piece from './Piece';
 
-const BOARD_SIZE = 5
-const SQUARE_SIZE = 1
+// Extend the PIXI components
+extend({ Container, Graphics });
 
-// Helper function to map row/col to 3D position
+const BOARD_SIZE = 5;
+const SQUARE_SIZE = 80;
+
+// Helper function to map row/col to 2D position
 const mapPositionToBoard = (row, col) => {
-  return [col - 2, 0.1, row - 2];
+  return [(col * SQUARE_SIZE), (row * SQUARE_SIZE)];
 };
 
-const Board = function Board({ 
+const Board = forwardRef(({ 
   fen,
   playerColor = 'white',
   onPieceDragStart,
   onPieceDragEnd,
-  onPiecePlaced
-}) {
+  onPiecePlaced,
+  squareSize = SQUARE_SIZE,
+  pieceTextures
+}, ref) => {
   const boardRef = useRef();
-  const draggableRefs = useRef({});
-  const { camera, gl, scene } = useThree();
+  const { app } = useApplication();
+  const [boardPosition, setBoardPosition] = useState({ x: 0, y: 0 });
+  const [boardOffset, setBoardOffset] = useState(0);
+  
+  // Expose the board ref to parent component
+  React.useImperativeHandle(ref, () => boardRef.current);
   
   // Parse FEN and create pieces
-  const pieces = useMemo(() => {
-    const { pieces } = fenToBoard(fen || '5/5/5/5/5 w - - 0 1');
-    return pieces;
-  }, [fen]);
+  const { pieces = [] } = fenToBoard(fen || '5/5/5/5/5 w - - 0 1');
   
-  // Rotate board if player is black
+  // Calculate board dimensions
+  const boardDimension = BOARD_SIZE * squareSize;
+  
+  // Update board position when app is ready and on window resize
   useEffect(() => {
-    if (boardRef.current) {
-      boardRef.current.rotation.y = playerColor === 'black' ? Math.PI : 0;
-    }
-  }, [playerColor]);
+    if (!app?.screen) return;
+    
+    const updateBoardPosition = () => {
+      const centerX = (app.screen.width / 2) - (boardDimension / 2);
+      const centerY = (app.screen.height / 2) - (boardDimension / 2);
+      setBoardPosition({ x: centerX, y: centerY });
+    };
+
+    updateBoardPosition();
+    window.addEventListener('resize', updateBoardPosition);
+
+    return () => {
+      window.removeEventListener('resize', updateBoardPosition);
+    };
+  }, [app?.screen, boardDimension]);
   
-  // Gentle floating animation for the board
-  useFrame(({ clock }) => {
-    if (boardRef.current) {
-      boardRef.current.position.y = Math.sin(clock.getElapsedTime() * 0.5) * 0.02;
-    }
+  // Gentle floating animation for the board using useTick
+  useTick(() => {
+    const offset = Math.sin(Date.now() * 0.001) * 5;
+    setBoardOffset(offset);
   });
-
-  // Handle drag events
-  const handleDragStart = (e) => {
-    document.body.style.cursor = 'grabbing';
-    onPieceDragStart?.();
-  };
-
-  const handleDrag = (e) => {
-    if (e.object) {
-      e.object.position.y = 0.1;
-      e.object.rotation.y = THREE.MathUtils.degToRad(5);
+  
+  // Draw the floor/background
+  const drawFloor = React.useCallback(g => {
+    g.clear();
+    g.beginFill(0xe2e8f0);
+    g.drawRect(-100, -100, boardDimension + 200, boardDimension + 200);
+    g.endFill();
+  }, [boardDimension]);
+  
+  // Handle piece being placed from the board
+  const handlePiecePlaced = (data) => {
+    if (onPiecePlaced) {
+      onPiecePlaced(data);
     }
   };
-
-  const handleDragEnd = (e) => {
-    document.body.style.cursor = 'auto';
-    onPieceDragEnd?.();
-    const obj = e.object;
-    
-    // Reset rotation
-    obj.rotation.y = 0;
-    
-    // Use raycasting to find the target square
-    const raycaster = new THREE.Raycaster();
-    raycaster.layers.set(1); // Only check layer 1 (board cells)
-    
-    const origin = new THREE.Vector3(
-      obj.position.x,
-      obj.position.y + 1,
-      obj.position.z
-    );
-    const direction = new THREE.Vector3(0, -1, 0);
-    raycaster.set(origin, direction);
-    
-    const intersects = raycaster.intersectObjects(
-      scene.children,
-      true
-    ).filter(hit => hit.object.userData?.isCell);
-    
-    if (intersects.length > 0) {
-      const cellData = intersects[0].object.userData;
-      if (cellData.row !== undefined && cellData.col !== undefined) {
-        onPiecePlaced?.({
-          pieceId: obj.userData.pieceId,
-          pieceType: obj.userData.pieceType,
-          from: {
-            row: obj.userData.row,
-            col: obj.userData.col
-          },
-          to: {
-            row: cellData.row,
-            col: cellData.col
-          }
-        });
-      }
-    }
-  };
-
-  // Get draggable pieces
-  const draggableObjects = Object.values(draggableRefs.current)
-    .filter(item => item.ref?.userData?.pieceColor === playerColor)
-    .map(item => item.ref);
-
+  
   return (
-    <group ref={boardRef}>
-      {/* Floor */}
-      <mesh position={[0, 0, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <planeGeometry args={[20, 20]} />
-        <meshStandardMaterial color="#e2e8f0" roughness={0.8} metalness={0.1} />
-      </mesh>
-
+    <pixiContainer 
+      ref={boardRef}
+      position={[boardPosition.x, boardPosition.y + boardOffset]}
+      pivot={[0, 0]}
+      scale={playerColor === 'black' ? [-1, -1] : [1, 1]}
+    >
+      {/* Draw the floor/background */}
+      <pixiGraphics draw={drawFloor} />
+      
       {/* Board cells */}
       {Array.from({ length: BOARD_SIZE }).map((_, row) =>
         Array.from({ length: BOARD_SIZE }).map((_, col) => {
@@ -125,60 +98,39 @@ const Board = function Board({
             <Square
               key={`${row}-${col}`}
               position={position}
-              color={isLight ? '#FFFFFF' : '#8B8B8B'}
+              color={isLight ? 0xFFFFFF : 0x8B8B8B}
               row={row}
               col={col}
-              size={SQUARE_SIZE}
+              size={squareSize}
             />
           );
         })
       )}
-
-      {/* Draggable pieces */}
-      <DragControls
-        args={[draggableObjects, camera, gl.domElement]}
-        onDragStart={handleDragStart}
-        onDrag={handleDrag}
-        onDragEnd={handleDragEnd}
-      >
-        {/* Render pieces */}
-        {pieces.map((piece) => {
-          if (!piece?.position) return null;
-          
-          const piecePosition = mapPositionToBoard(piece.position.row, piece.position.col);
-          const isDraggable = piece.color === playerColor;
-          
-          return (
-            <group
-              key={piece.id}
-              position={piecePosition}
-              ref={ref => {
-                if (isDraggable && ref) {
-                  ref.userData = {
-                    pieceId: piece.id,
-                    pieceType: piece.type,
-                    pieceColor: piece.color,
-                    row: piece.position.row,
-                    col: piece.position.col
-                  };
-                  draggableRefs.current[piece.id] = { ref };
-                }
-              }}
-            >
-              <Piece
-                id={piece.id}
-                type={piece.type}
-                color={piece.color}
-                position={[0, 0, 0]}
-                scale={[12, 12, 12]}
-                isInteractive={isDraggable}
-              />
-            </group>
-          );
-        })}
-      </DragControls>
-    </group>
+      
+      {/* Pieces */}
+      {pieces.length > 0 && pieces.map((piece) => {
+        if (!piece?.position) return null;
+        
+        const piecePosition = mapPositionToBoard(piece.position.row, piece.position.col);
+        const isDraggable = piece.color === playerColor;
+        
+        return (
+          <Piece
+            key={piece.id}
+            piece={piece}
+            x={piecePosition[0]}
+            y={piecePosition[1]}
+            draggable={isDraggable}
+            onDragStart={onPieceDragStart}
+            onDragEnd={onPieceDragEnd}
+            pieceTextures={pieceTextures}
+          />
+        );
+      })}
+    </pixiContainer>
   );
-};
+});
+
+Board.displayName = 'Board';
 
 export default Board; 

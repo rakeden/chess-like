@@ -1,12 +1,13 @@
-import { useRef, useState, useEffect } from 'react';
-import { useThree } from '@react-three/fiber';
-import { DragControls } from '@react-three/drei';
-import { Html } from '@react-three/drei';
+import React, { useState, useEffect } from 'react';
+import { extend } from '@pixi/react';
+import { Container, Graphics, Text } from 'pixi.js'; 
+import { TextStyle } from 'pixi.js';
 import Piece from './Piece';
-import PieceBenchSurface from './PieceBenchSurface';
-import * as THREE from 'three';
 
-const PIECE_SPACING = 0.8;
+// Extend the PIXI components
+extend({ Container, Graphics, Text });
+
+const PIECE_SPACING = 80;
 
 // Mock piece data - replace with props in production
 const MOCK_PIECES = [
@@ -17,139 +18,103 @@ const MOCK_PIECES = [
   { id: 'queen1', type: 'queen', value: 9 }
 ];
 
-// Individual draggable piece component
-const DraggablePiece = ({ 
-  piece, 
-  position, 
-  playerColor, 
+// Bench surface drawing
+const BenchSurface = ({ width, title }) => {
+  // Draw the bench surface
+  const drawBench = React.useCallback(g => {
+    g.clear();
+    
+    // Draw background with slight gradient
+    g.beginFill(0x333333, 0.8);
+    g.drawRoundedRect(0, 0, width, 100, 10);
+    g.endFill();
+    
+    // Draw highlight line
+    g.lineStyle(2, 0x666666, 0.6);
+    g.moveTo(10, 15);
+    g.lineTo(width - 10, 15);
+    g.endFill();
+  }, [width]);
+  
+  // Text style for title
+  const titleStyle = new TextStyle({
+    fontFamily: 'Arial',
+    fontSize: 14,
+    fontWeight: 'bold',
+    fill: '#ffffff',
+  });
+  
+  return (
+    <>
+      <pixiGraphics draw={drawBench} />
+      <pixiText 
+        text={title}
+        style={titleStyle}
+        position={[width / 2, 8]}
+        anchor={[0.5, 0]}
+      />
+    </>
+  );
+};
+
+// Individual piece component with value display
+const BenchPiece = ({ 
+  piece,
+  position,
+  playerColor,
   isAffordable,
   onDragStart,
   onDragEnd,
   onPiecePlaced,
-  onPositionUpdate
+  boardRef,
+  squareSize
 }) => {
-  const { camera, gl, scene } = useThree();
-  const pieceRef = useRef();
-  const meshRef = useRef();
-  const pieceInstanceRef = useRef();
-
-  const handleDragStart = (e) => {
-    document.body.style.cursor = 'grabbing';
-    onDragStart?.();
-  };
-
-  const handleDrag = (e) => {
-    if (meshRef.current) {
-      meshRef.current.rotation.y = THREE.MathUtils.degToRad(5);
-    }
-  };
-
-  const handleDragEnd = (e) => {
-    document.body.style.cursor = 'auto';
-    onDragEnd?.();
-    
-    if (meshRef.current) {
-      // Reset rotation
-      meshRef.current.rotation.y = 0;
-      
-      // Use raycasting to find if piece was dropped on board
-      const raycaster = new THREE.Raycaster();
-      raycaster.layers.set(1); // Only check layer 1 (board cells)
-      
-      const origin = new THREE.Vector3(
-        meshRef.current.position.x,
-        meshRef.current.position.y + 1,
-        meshRef.current.position.z
-      );
-      const direction = new THREE.Vector3(0, -1, 0);
-      raycaster.set(origin, direction);
-      
-      const intersects = raycaster.intersectObjects(
-        scene.children,
-        true
-      ).filter(hit => hit.object.userData?.isCell);
-      
-      if (intersects.length > 0) {
-        const cellData = intersects[0].object.userData;
-        if (cellData.row !== undefined && cellData.col !== undefined) {
-          // Notify parent of placement attempt
-          const wasPlaced = onPiecePlaced?.({
-            pieceId: piece.id,
-            pieceType: piece.type,
-            value: piece.value,
-            to: {
-              row: cellData.row,
-              col: cellData.col
-            }
-          });
-          
-          // If placement was unsuccessful, return to initial position
-          if (!wasPlaced && pieceInstanceRef.current?.returnToPosition) {
-            pieceInstanceRef.current.returnToPosition();
-          }
-        } else {
-          // Invalid cell data, return to position
-          pieceInstanceRef.current?.returnToPosition();
-        }
-      } else {
-        // No valid intersection, return to position
-        pieceInstanceRef.current?.returnToPosition();
-      }
-    }
-  };
-
-  // Handle position updates from the piece
-  const handleReturnToPosition = (pos) => {
-    if (meshRef.current) {
-      meshRef.current.position.set(0, 0, 0);
-      onPositionUpdate?.(piece.id, pos);
-    }
-  };
-
+  // Text style for value label
+  const valueStyle = new TextStyle({
+    fontFamily: 'Arial',
+    fontSize: 12,
+    fontWeight: 'bold',
+    fill: isAffordable ? '#ffffff' : '#ff6666',
+    dropShadow: true,
+    dropShadowColor: '#000000',
+    dropShadowBlur: 4,
+    dropShadowDistance: 1,
+  });
+  
+  // Draw the value background
+  const drawValueBg = React.useCallback(g => {
+    g.clear();
+    g.beginFill(isAffordable ? 0x000000 : 0xff0000, 0.7);
+    g.drawRoundedRect(-15, -10, 30, 20, 5);
+    g.endFill();
+  }, [isAffordable]);
+  
   return (
-    <group ref={pieceRef} position={position}>
-      <DragControls
-        args={[meshRef.current ? [meshRef.current] : [], camera, gl.domElement]}
-        onDragStart={handleDragStart}
-        onDrag={handleDrag}
-        onDragEnd={handleDragEnd}
-      >
-        <group 
-          ref={meshRef}
-          position={[0, 0, 0]}
-        >
-          <Piece
-            ref={pieceInstanceRef}
-            type={piece.type}
-            color={playerColor}
-            scale={[12, 12, 12]}
-            position={[0, 0, 0]}
-            isDisabled={!isAffordable}
-            isInteractive={isAffordable}
-            onReturnToPosition={handleReturnToPosition}
-          />
-          
-          {/* Show piece value */}
-          <Html
-            position={[0, -0.3, 0]}
-            center
-            sprite
-            transform
-            scale={0.25}
-            style={{
-              background: isAffordable ? 'rgba(0,0,0,0.8)' : 'rgba(255,0,0,0.8)',
-              padding: '3px 10px',
-              borderRadius: '4px',
-              color: 'white',
-              fontWeight: 'bold',
-              pointerEvents: 'none'
-            }}
-          >
-            {piece.value}
-          </Html>
-        </group>
-      </DragControls>
-    </group>
+    <pixiContainer position={position}>
+      <Piece
+        id={piece.id}
+        type={piece.type}
+        color={playerColor}
+        position={[0, 0]}
+        isInteractive={isAffordable}
+        isDisabled={!isAffordable}
+        onDragStart={onDragStart}
+        onDragEnd={onDragEnd}
+        onPiecePlaced={(data) => onPiecePlaced({ ...data, value: piece.value })}
+        boardRef={boardRef}
+        squareSize={squareSize}
+      />
+      
+      {/* Value display */}
+      <pixiContainer position={[0, 30]}>
+        <pixiGraphics draw={drawValueBg} />
+        <pixiText
+          text={piece.value.toString()}
+          style={valueStyle}
+          anchor={0.5}
+        />
+      </pixiContainer>
+    </pixiContainer>
   );
 };
 
@@ -158,50 +123,57 @@ export default function PieceBench({
   onPieceDragStart,
   onPieceDragEnd,
   onPiecePlaced,
-  remainingPoints = 20
+  remainingPoints = 20,
+  boardRef,
+  squareSize = 80
 }) {
+  const [benchWidth, setBenchWidth] = useState(500);
   const [piecePositions, setPiecePositions] = useState({});
+  
+  // Handle window resize for responsive bench
+  useEffect(() => {
+    const handleResize = () => {
+      setBenchWidth(Math.min(window.innerWidth * 0.8, 600));
+    };
+    
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
   
   // Initialize positions for pieces
   useEffect(() => {
     const positions = {};
-    const availableWidth = 5; // Board width
-    const startX = -((availableWidth - PIECE_SPACING) / 2);
+    const totalPieces = MOCK_PIECES.length;
+    const totalWidth = totalPieces * PIECE_SPACING;
+    const startX = -totalWidth / 2 + PIECE_SPACING / 2;
     
     MOCK_PIECES.forEach((piece, index) => {
-      if (!piecePositions[piece.id]) {
-        positions[piece.id] = [
-          startX + (index * PIECE_SPACING),
-          -0.05,
-          0
-        ];
-      }
+      positions[piece.id] = [
+        startX + (index * PIECE_SPACING),
+        0
+      ];
     });
     
-    setPiecePositions(prev => ({
-      ...prev,
-      ...positions
-    }));
+    setPiecePositions(positions);
   }, []);
-
-  const handlePositionUpdate = (pieceId, newPosition) => {
-    setPiecePositions(prev => ({
-      ...prev,
-      [pieceId]: newPosition
-    }));
-  };
-
+  
+  const title = `Available Pieces (${remainingPoints} points remaining)`;
+  
   return (
-    <group position={[0, -0.2, -2.5]}>
-      <PieceBenchSurface title={`Available Pieces (${remainingPoints} points remaining)`} />
+    <pixiContainer 
+      position={[window.innerWidth / 2, window.innerHeight - 150]}
+      pivot={[benchWidth / 2, 0]}
+    >
+      <BenchSurface width={benchWidth} title={title} />
       
       {/* Render all piece types */}
       {MOCK_PIECES.map((piece) => {
-        const position = piecePositions[piece.id] || [0, 0, 0];
+        const position = piecePositions[piece.id] || [0, 30];
         const isAffordable = piece.value <= remainingPoints;
         
         return (
-          <DraggablePiece
+          <BenchPiece
             key={piece.id}
             piece={piece}
             position={position}
@@ -210,10 +182,11 @@ export default function PieceBench({
             onDragStart={onPieceDragStart}
             onDragEnd={onPieceDragEnd}
             onPiecePlaced={onPiecePlaced}
-            onPositionUpdate={handlePositionUpdate}
+            boardRef={boardRef}
+            squareSize={squareSize}
           />
         );
       })}
-    </group>
+    </pixiContainer>
   );
 } 

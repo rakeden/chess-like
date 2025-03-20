@@ -1437,3 +1437,60 @@ Review and suggest improvements for the current drag and drop implementation.
    - Add drag event debouncing
 
 The refactoring will focus on creating a more maintainable and performant drag and drop system while improving the user experience with better visual feedback and smoother interactions.
+
+## 2024-07-14 - Three.js to Pixi.js Migration
+
+### User Request
+Refactor the whole project and remove three.js. We are going to use pixi.js and @pixi/react specifically for the rendering of the game.
+
+### Actions Taken
+1. **Package Installation**:
+   - Installed `pixi.js` and `@pixi/react@beta` to replace Three.js
+   - Removed Three.js dependencies and related code
+
+2. **Component Architecture Refactoring**:
+   - Converted 3D Board component to 2D using Pixi.js Container and Graphics
+   - Created 2D Square component using Pixi.js Graphics
+   - Replaced 3D models with 2D sprites for chess pieces
+   - Implemented PieceBench component using Pixi.js Container and Graphics
+
+3. **@pixi/react Implementation**:
+   - Used the `extend` API to register Pixi.js components before using them in JSX
+   - Used proper component naming with the `pixi` prefix (`pixiContainer`, `pixiGraphics`, `pixiSprite`, etc.)
+   - Implemented `draw` callbacks for Graphics components
+   - Used `useApplication` hook to access the parent application context
+   - Implemented `useTick` hook for animations instead of `requestAnimationFrame`
+
+4. **Drag and Drop Functionality**:
+   - Rebuilt drag-and-drop functionality using Pixi.js event system
+   - Implemented hit-testing for piece placement
+   - Added visual feedback during drag operations
+   - Created animations for piece appearance and movement
+
+5. **Performance Optimizations**:
+   - Utilized Pixi.js's efficient 2D rendering capabilities
+   - Implemented proper texture loading with PIXI.Assets
+   - Added cleanup for animations and event listeners
+   - Used memoization for better rendering performance
+
+6. **Bug Fixes and Improvements**:
+   - Fixed API usage to match the @pixi/react documentation
+   - Updated `useApp` to `useApplication` to match the correct API
+   - Improved animation system with `useTick` hook
+   - Created callback memoization to prevent unnecessary re-renders
+
+### Technical Implementation Details
+- `extend` API is used to register Pixi.js components before using them in JSX
+- Component naming follows the convention of adding `pixi` prefix to all Pixi.js components
+- `useApplication` hook is used to access the application context
+- `useTick` is used for frame-by-frame animations
+- Graphics drawing is done through callback functions passed to the `draw` prop
+- Texture loading is handled through PIXI.Assets with proper error handling
+- Event handling follows Pixi.js conventions with pointer events
+
+### Next Steps
+1. Add proper chess piece assets (PNG images with transparent backgrounds)
+2. Implement puzzle selection and validation
+3. Add game state management for progress tracking
+4. Create responsive design adjustments for different screen sizes
+5. Add sound effects and additional visual feedback

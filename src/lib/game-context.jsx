@@ -1,449 +1,155 @@
-import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react'
-import { boardToFEN, fenToBoard } from './stockfish-utils';
-
-// Define piece values
-export const PIECE_VALUES = {
-  pawn: 1,
-  knight: 3,
-  bishop: 3,
-  rook: 5,
-  queen: 9,
-  king: 0 // King has no point value as it's required
-};
-
-// Game phases
-export const GAME_PHASES = {
-  MENU: 'menu',
-  PREPARATION: 'preparation',
-  PLAYING: 'playing',
-  GAME_OVER: 'gameOver'
-};
-
-// Initial board state - 5x5 empty board
-const createEmptyBoard = () => {
-  const board = [];
-  for (let i = 0; i < 5; i++) {
-    board[i] = [];
-    for (let j = 0; j < 5; j++) {
-      board[i][j] = null;
-    }
-  }
-  return board;
-};
-
-// Example puzzle with predefined opponent pieces
-const examplePuzzle = {
-  opponentPieces: [
-    { id: 'rook-0-0-black', position: { row: 0, col: 0 }, type: 'rook', color: 'black', value: PIECE_VALUES.rook },
-    { id: 'king-0-2-black', position: { row: 0, col: 2 }, type: 'king', color: 'black', value: PIECE_VALUES.king },
-    { id: 'rook-0-4-black', position: { row: 0, col: 4 }, type: 'rook', color: 'black', value: PIECE_VALUES.rook },
-    { id: 'pawn-1-1-black', position: { row: 1, col: 1 }, type: 'pawn', color: 'black', value: PIECE_VALUES.pawn },
-    { id: 'pawn-1-2-black', position: { row: 1, col: 2 }, type: 'pawn', color: 'black', value: PIECE_VALUES.pawn },
-    { id: 'pawn-1-3-black', position: { row: 1, col: 3 }, type: 'pawn', color: 'black', value: PIECE_VALUES.pawn }
-  ],
-  difficulty: 1,
-  maxPlayerValue: 15
-};
+import { createContext, useContext, useState, useEffect, useCallback } from 'react'
+import { PuzzleEngine, GAME_PHASES, PIECE_VALUES } from './puzzle-engine'
 
 const GameContext = createContext()
 
+export { GAME_PHASES, PIECE_VALUES }  // Re-export these constants
 export function GameProvider({ children }) {
-  // Game state
-  const [gamePhase, setGamePhase] = useState(GAME_PHASES.MENU);
-  const [stage, setStage] = useState(1);
-  const [currentFEN, setCurrentFEN] = useState('5/5/5/5/5 w - - 0 1'); // Empty 5x5 board
-  const [selectedPieces, setSelectedPieces] = useState([]);
-  const [pieces, setPieces] = useState([]);
-  const [opponentPieces, setOpponentPieces] = useState([]);
-  const [playerColor, setPlayerColor] = useState('white');
-  const [currentTurn, setCurrentTurn] = useState('white');
+  const [gameEngine] = useState(() => new PuzzleEngine());
+  const [gameState, setGameState] = useState(gameEngine.getState());
   const [preparationTimeLeft, setPreparationTimeLeft] = useState(60);
   const [timerActive, setTimerActive] = useState(false);
-  const [currentPuzzle, setCurrentPuzzle] = useState(null);
   const [isPreparationPaused, setIsPreparationPaused] = useState(false);
+  const [puzzleSolved, setPuzzleSolved] = useState(false);
   
-  // Derive board state from FEN instead of maintaining separate state
-  const board = useMemo(() => fenToBoard(currentFEN), [currentFEN]);
+  // Update game state whenever it changes
+  const updateGameState = useCallback(() => {
+    setGameState(gameEngine.getState());
+  }, [gameEngine]);
   
-  // Derive pieces from FEN
-  const { pieces: derivedPieces, opponentPieces: derivedOpponentPieces } = useMemo(() => {
-    const boardState = fenToBoard(currentFEN);
-    const whitePieces = [];
-    const blackPieces = [];
+  // Reset game
+  const resetGame = useCallback(() => {
+    gameEngine.reset();
+    setPreparationTimeLeft(60);
+    setTimerActive(false);
+    setIsPreparationPaused(false);
+    setPuzzleSolved(false);
+    updateGameState();
+  }, [gameEngine, updateGameState]);
+  
+  // Start puzzle
+  const startPuzzle = useCallback((puzzleData) => {
+    try {
+      gameEngine.startPuzzle(puzzleData);
+      setPreparationTimeLeft(60);
+      setTimerActive(true);
+      setIsPreparationPaused(false);
+      setPuzzleSolved(false);
+      updateGameState();
+    } catch (error) {
+      console.error('Error starting puzzle:', error);
+      resetGame();
+    }
+  }, [gameEngine, updateGameState, resetGame]);
+  
+  // Place piece during preparation
+  const placePiece = useCallback((piece, position) => {
+    if (gameEngine.placePiece(piece, position)) {
+      updateGameState();
+    }
+  }, [gameEngine, updateGameState]);
+  
+  // Move piece during gameplay
+  const movePiece = useCallback((fromPosition, toPosition) => {
+    // Check if this move solves the puzzle
+    const isSolution = gameEngine.checkSolution(fromPosition, toPosition);
     
-    // Convert board state to piece arrays
-    boardState.forEach((row, rowIndex) => {
-      row.forEach((piece, colIndex) => {
-        if (piece) {
-          const pieceObj = {
-            id: `${piece.type}-${rowIndex}-${colIndex}-${piece.color}`,
-            type: piece.type,
-            color: piece.color,
-            value: PIECE_VALUES[piece.type],
-            position: { row: rowIndex, col: colIndex }
-          };
-          if (piece.color === 'white') {
-            whitePieces.push(pieceObj);
-          } else {
-            blackPieces.push(pieceObj);
-          }
-        }
-      });
-    });
-    
-    return {
-      pieces: playerColor === 'white' ? whitePieces : blackPieces,
-      opponentPieces: playerColor === 'white' ? blackPieces : whitePieces
-    };
-  }, [currentFEN, playerColor]);
+    // Execute the move
+    if (gameEngine.movePiece(fromPosition, toPosition)) {
+      // If the move is a solution, mark the puzzle as solved
+      if (isSolution) {
+        setPuzzleSolved(true);
+        gameEngine.gamePhase = GAME_PHASES.GAME_OVER;
+      }
+      
+      updateGameState();
+      return true;
+    }
+    return false;
+  }, [gameEngine, updateGameState]);
   
-  // Generate available pieces based on player color
-  const generatePieces = useCallback((color) => [
-    { id: `king-1-${color}`, type: 'king', color, value: PIECE_VALUES.king },
-    { id: `queen-1-${color}`, type: 'queen', color, value: PIECE_VALUES.queen },
-    { id: `rook-1-${color}`, type: 'rook', color, value: PIECE_VALUES.rook },
-    { id: `rook-2-${color}`, type: 'rook', color, value: PIECE_VALUES.rook },
-    { id: `bishop-1-${color}`, type: 'bishop', color, value: PIECE_VALUES.bishop },
-    { id: `bishop-2-${color}`, type: 'bishop', color, value: PIECE_VALUES.bishop },
-    { id: `knight-1-${color}`, type: 'knight', color, value: PIECE_VALUES.knight },
-    { id: `knight-2-${color}`, type: 'knight', color, value: PIECE_VALUES.knight },
-    { id: `pawn-1-${color}`, type: 'pawn', color, value: PIECE_VALUES.pawn },
-    { id: `pawn-2-${color}`, type: 'pawn', color, value: PIECE_VALUES.pawn },
-    { id: `pawn-3-${color}`, type: 'pawn', color, value: PIECE_VALUES.pawn },
-    { id: `pawn-4-${color}`, type: 'pawn', color, value: PIECE_VALUES.pawn },
-    { id: `pawn-5-${color}`, type: 'pawn', color, value: PIECE_VALUES.pawn },
-  ], []);
+  // Finish preparation phase
+  const finishPreparation = useCallback(() => {
+    if (gameState.gamePhase === GAME_PHASES.PREPARATION) {
+      gameEngine.startPlaying();
+      setTimerActive(false);
+      updateGameState();
+    }
+  }, [gameEngine, gameState.gamePhase, updateGameState]);
   
-  const [availablePieces, setAvailablePieces] = useState(() => generatePieces('white'));
-  
-  // Stage-specific piece value constraint
-  const maxStageValues = {
-    1: 15, // Stage 1: Max 15 points
-    2: 20, // Stage 2: Max 20 points
-    3: 25, // Stage 3: Max 25 points
-  }
-  
-  const currentMaxValue = currentPuzzle?.maxPlayerValue || maxStageValues[stage] || maxStageValues[1]
-  
-  // Calculate total value of selected pieces
-  const selectedPiecesValue = selectedPieces.reduce((sum, piece) => sum + piece.value, 0)
-  
-  // Set player color and reset game with new colored pieces
-  const setPlayerTurn = (color) => {
-    setPlayerColor(color);
-    resetGame(color);
-  }
-
-  // Functions to pause and resume preparation timer
+  // Pause/resume preparation timer
   const pausePreparation = useCallback(() => {
-    if (gamePhase === GAME_PHASES.PREPARATION) {
+    if (gameState.gamePhase === GAME_PHASES.PREPARATION) {
       setIsPreparationPaused(true);
       setTimerActive(false);
     }
-  }, [gamePhase]);
+  }, [gameState.gamePhase]);
   
   const resumePreparation = useCallback(() => {
-    if (gamePhase === GAME_PHASES.PREPARATION) {
+    if (gameState.gamePhase === GAME_PHASES.PREPARATION) {
       setIsPreparationPaused(false);
       setTimerActive(true);
     }
-  }, [gamePhase]);
-
-  // Preparation phase timer
+  }, [gameState.gamePhase]);
+  
+  // Handle preparation timer
   useEffect(() => {
     let timer;
-    if (timerActive && gamePhase === GAME_PHASES.PREPARATION && preparationTimeLeft > 0 && !isPreparationPaused) {
+    if (timerActive && gameState.gamePhase === GAME_PHASES.PREPARATION && preparationTimeLeft > 0 && !isPreparationPaused) {
       timer = setInterval(() => {
         setPreparationTimeLeft(prev => prev - 1);
       }, 1000);
-    } else if (preparationTimeLeft === 0 && gamePhase === GAME_PHASES.PREPARATION) {
-      // Time's up - transition to playing phase
-      setGamePhase(GAME_PHASES.PLAYING);
-      setCurrentTurn(playerColor === 'white' ? 'white' : 'black'); // Player with white goes first
+    } else if (preparationTimeLeft === 0 && gameState.gamePhase === GAME_PHASES.PREPARATION) {
+      finishPreparation();
     }
     
     return () => {
       if (timer) clearInterval(timer);
     };
-  }, [timerActive, preparationTimeLeft, gamePhase, playerColor, isPreparationPaused]);
+  }, [timerActive, preparationTimeLeft, gameState.gamePhase, isPreparationPaused, finishPreparation]);
   
-  // Reset the game state and return to menu - define this first
-  const resetGame = useCallback(() => {
-    setPieces([]);
-    setOpponentPieces([]);
-    setAvailablePieces(generatePieces('white'));
-    setCurrentPuzzle(null);
-    setGamePhase(GAME_PHASES.MENU);
-    setPreparationTimeLeft(60);
-    setTimerActive(false);
-    setIsPreparationPaused(false);
-    setCurrentTurn('white');
-  }, [generatePieces]);
-  
-  // Start a puzzle with provided puzzle data - depends on resetGame
-  const startPuzzle = useCallback((puzzleData) => {
-    try {
-      console.log("Starting puzzle with data:", puzzleData);
-      
-      if (!puzzleData) {
-        console.warn("No puzzle data provided to startPuzzle");
-        return;
-      }
-      
-      if (!puzzleData.opponentPieces || !Array.isArray(puzzleData.opponentPieces)) {
-        console.error("Invalid puzzle data: missing or invalid opponentPieces", puzzleData);
-        return;
-      }
-      
-      // Reset the board
-      const newBoard = createEmptyBoard();
-      
-      // Set the player color (default to white for puzzles)
-      const color = 'white';
-      setPlayerColor(color);
-      
-      // Store opponent pieces directly in state
-      setOpponentPieces(puzzleData.opponentPieces || []);
-      
-      console.log("Setting opponent pieces:", puzzleData.opponentPieces);
-      
-      // Place opponent pieces on the board
-      puzzleData.opponentPieces.forEach(piece => {
-        const { position, type, color } = piece;
-        
-        // Validate position and type
-        if (!position || typeof position.row !== 'number' || typeof position.col !== 'number') {
-          console.warn("Skipping piece with invalid position", piece);
-          return;
+  // Auto-move opponent pieces in playing phase
+  useEffect(() => {
+    let timeoutId;
+    
+    const makeOpponentMove = async () => {
+      if (gameState.gamePhase === GAME_PHASES.PLAYING && gameState.currentTurn !== gameState.playerColor) {
+        const bestMove = await gameEngine.getBestMove();
+        if (bestMove) {
+          gameEngine.movePiece(bestMove.from, bestMove.to);
+          updateGameState();
         }
-        
-        if (!type || !color) {
-          console.warn("Skipping piece with missing type or color", piece);
-          return;
-        }
-        
-        const pieceId = piece.id || `${type}-${position.row}-${position.col}-${color}`;
-        newBoard[position.row][position.col] = { 
-          id: pieceId, 
-          type, 
-          color, 
-          value: PIECE_VALUES[type] || 0 
-        };
-      });
-      
-      // Automatically place player's king on the board
-      const playerKing = { id: `king-1-${color}`, type: 'king', color, value: PIECE_VALUES.king };
-      
-      // Try to place the king in the center of the player's side (row 4, col 2)
-      const kingPosition = { row: 4, col: 2 };
-      
-      // Check if the position is available
-      if (!newBoard[kingPosition.row][kingPosition.col]) {
-        newBoard[kingPosition.row][kingPosition.col] = playerKing;
-        
-        // Add king to pieces array with position
-        const kingWithPosition = { ...playerKing, position: kingPosition };
-        setPieces([kingWithPosition]);
-        setSelectedPieces([playerKing]);
       }
-      
-      // Set up the board with opponent pieces and player's king
-      setPieces(newBoard.flat());
-      
-      // Remove king from available pieces
-      const availablePiecesWithoutKing = generatePieces(color).filter(p => p.type !== 'king');
-      setAvailablePieces(availablePiecesWithoutKing);
-      
-      // Set the current puzzle
-      setCurrentPuzzle(puzzleData);
-      
-      // Start preparation phase
-      setGamePhase(GAME_PHASES.PREPARATION);
-      setPreparationTimeLeft(60); // Reset to 60 seconds
-      setTimerActive(true);
-      setIsPreparationPaused(false);
-    } catch (error) {
-      console.error("Error in startPuzzle:", error);
-      // Reset game state to menu to avoid broken state
-      resetGame();
-    }
-  }, [generatePieces, resetGame]);
-  
-  // Place a piece on the board
-  const placePiece = useCallback((pieceId, position) => {
-    if (gamePhase !== GAME_PHASES.PREPARATION) return;
+    };
     
-    try {
-      const piece = availablePieces.find(p => p.id === pieceId);
-      if (!piece) return;
-      
-      // Check value constraint
-      const newTotalValue = selectedPiecesValue + piece.value;
-      if (newTotalValue > currentMaxValue) {
-        console.log("Cannot add piece: would exceed max value");
-        return;
-      }
-      
-      // Create a new piece with a unique ID based on timestamp and position
-      const newPiece = {
-        ...piece,
-        id: `${piece.type}-${Date.now()}-${position.row}-${position.col}-${piece.color}`,
-        position
-      };
-      
-      // Update FEN directly instead of managing separate board state
-      const boardState = fenToBoard(currentFEN);
-      boardState[position.row][position.col] = {
-        type: piece.type,
-        color: piece.color
-      };
-      
-      const newFEN = boardToFEN(
-        boardState, 
-        [...pieces, newPiece], 
-        opponentPieces,
-        playerColor === 'white' ? 'w' : 'b'
-      );
-      
-      setCurrentFEN(newFEN);
-      setPieces(current => [...current, newPiece]);
-      setSelectedPieces(current => [...current, newPiece]);
-      
-    } catch (error) {
-      console.error("Error in placePiece:", error);
-    }
-  }, [gamePhase, availablePieces, selectedPiecesValue, currentMaxValue, currentFEN, pieces, opponentPieces, playerColor]);
-  
-  // Remove a piece from the board
-  const removePiece = (position) => {
-    if (!position) {
-      console.warn("removePiece called with invalid position", { position });
-      return;
+    if (gameState.gamePhase === GAME_PHASES.PLAYING && gameState.currentTurn !== gameState.playerColor) {
+      timeoutId = setTimeout(makeOpponentMove, 1000); // Add delay for better UX
     }
     
-    const { row, col } = position;
-    
-    // Validate row and col
-    if (row === undefined || col === undefined || row < 0 || row >= 5 || col < 0 || col >= 5) {
-      console.warn("removePiece called with out-of-bounds position", { row, col });
-      return;
-    }
-    
-    // Only allow removal in preparation phase or if it's player's turn in playing phase
-    if (gamePhase !== GAME_PHASES.PREPARATION && 
-        (gamePhase !== GAME_PHASES.PLAYING || currentTurn !== playerColor)) {
-      console.warn("removePiece: Not allowed in current game phase or turn", { gamePhase, currentTurn, playerColor });
-      return;
-    }
-    
-    try {
-      // Find the piece at the position
-      const pieceToRemove = pieces.find(p => 
-        p.position && p.position.row === row && p.position.col === col
-      );
-      
-      if (!pieceToRemove) {
-        console.warn("removePiece: No piece at position", { row, col });
-        return;
-      }
-      
-      // Only allow removing player's own pieces
-      if (pieceToRemove.color !== playerColor) {
-        console.warn("removePiece: Cannot remove opponent's piece", { pieceColor: pieceToRemove.color, playerColor });
-        return;
-      }
-      
-      console.log("Removing piece", { piece: pieceToRemove, position });
-      
-      // Remove from pieces array
-      setPieces(currentPieces => currentPieces.filter(p => p.id !== pieceToRemove.id));
-      
-      // Remove from selected pieces
-      setSelectedPieces(current => current.filter(p => p.id !== pieceToRemove.id));
-      
-    } catch (error) {
-      console.error("Error in removePiece:", error);
-    }
-  };
-  
-  // Make a move (from one position to another)
-  const movePiece = useCallback((fromPosition, toPosition) => {
-    if (gamePhase !== GAME_PHASES.PLAYING || currentTurn !== playerColor) return;
-    
-    try {
-      const boardState = fenToBoard(currentFEN);
-      const piece = boardState[fromPosition.row][fromPosition.col];
-      
-      if (!piece || piece.color !== playerColor) return;
-      
-      // Move the piece
-      boardState[toPosition.row][toPosition.col] = piece;
-      boardState[fromPosition.row][fromPosition.col] = null;
-      
-      // Generate new FEN
-      const newFEN = boardToFEN(
-        boardState,
-        pieces.map(p => {
-          if (p.position.row === fromPosition.row && p.position.col === fromPosition.col) {
-            return { ...p, position: toPosition };
-          }
-          return p;
-        }),
-        opponentPieces,
-        currentTurn === 'white' ? 'b' : 'w' // Switch turn in FEN
-      );
-      
-      setCurrentFEN(newFEN);
-      setCurrentTurn(currentTurn === 'white' ? 'black' : 'white');
-      
-    } catch (error) {
-      console.error("Error in movePiece:", error);
-    }
-  }, [gamePhase, currentTurn, playerColor, currentFEN, pieces, opponentPieces]);
-  
-  // Finish preparation and start the game
-  const finishPreparation = () => {
-    if (gamePhase === GAME_PHASES.PREPARATION) {
-      setTimerActive(false);
-      setGamePhase(GAME_PHASES.PLAYING);
-      setCurrentTurn(playerColor === 'white' ? 'white' : 'black');
-    }
-  };
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, [gameEngine, gameState, updateGameState]);
 
   return (
     <GameContext.Provider value={{
       // Game state
-      gamePhase,
+      ...gameState,
       GAME_PHASES,
-      board,
-      selectedPieces,
-      pieces,
-      opponentPieces,
-      availablePieces,
-      playerColor,
-      currentTurn,
+      PIECE_VALUES,
       preparationTimeLeft,
       timerActive,
       isPreparationPaused,
-      currentPuzzle,
-      stage,
-      selectedPiecesValue,
-      currentMaxValue,
-      currentFEN,
+      puzzleSolved,
       
-      // Game actions
+      // Actions
+      resetGame,
+      startPuzzle,
       placePiece,
       movePiece,
-      startPuzzle,
       finishPreparation,
-      resetGame,
-      setStage,
-      removePiece,
-      setGamePhase,
-      setTimerActive,
-      setPlayerTurn,
       pausePreparation,
-      resumePreparation,
+      resumePreparation
     }}>
       {children}
     </GameContext.Provider>

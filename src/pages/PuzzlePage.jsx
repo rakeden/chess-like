@@ -63,11 +63,17 @@ const FenDisplay = ({ currentFEN, showFEN, setShowFEN }) => {
 };
 
 // Game over screen as a separate component
-const GameOverScreen = ({ onTryAgain, onBackToPuzzles }) => (
+const GameOverScreen = ({ onTryAgain, onBackToPuzzles, puzzleSolved }) => (
   <div className="flex items-center justify-center min-h-[calc(100vh-8rem)]">
     <div className="bg-card p-6 rounded-lg shadow-md max-w-md">
-      <h2 className="text-2xl font-bold mb-4">Game Over</h2>
-      <p className="mb-4">The puzzle has ended.</p>
+      <h2 className="text-2xl font-bold mb-4">
+        {puzzleSolved ? 'Puzzle Solved!' : 'Game Over'}
+      </h2>
+      <p className="mb-4">
+        {puzzleSolved 
+          ? 'Congratulations! You found the correct solution to the puzzle.' 
+          : 'The puzzle has ended.'}
+      </p>
       <div className="flex flex-col gap-3">
         <Button 
           size="lg" 
@@ -111,28 +117,37 @@ const DragControlWrapper = ({ children }) => {
   const registerDraggable = (id, ref, type = 'board') => {
     if (ref) {
       draggableRefs.current[id] = { ref, type };
+      console.log(`Registered draggable: ${id}, type: ${type}`);
+      console.log('userData:', ref.userData);
     }
   };
   
   // Get all draggable objects
   const draggableObjects = Object.values(draggableRefs.current)
-    .filter(item => 
-      item.ref && 
-      item.ref.userData && 
-      item.ref.userData.pieceColor === playerColor &&
-      (gamePhase === GAME_PHASES.PREPARATION || gamePhase === GAME_PHASES.PLAYING)
-    )
+    .filter(item => {
+      const isValid = item.ref && 
+        item.ref.userData && 
+        (item.ref.userData.pieceColor === playerColor || item.ref.userData.selectionPiece) &&
+        (gamePhase === GAME_PHASES.PREPARATION || gamePhase === GAME_PHASES.PLAYING);
+      
+      if (!isValid) {
+        console.log('Filtered out piece:', item.ref?.userData);
+      }
+      return isValid;
+    })
     .map(item => item.ref);
-  
+
   // Handle dragstart event
   const handleDragStart = (e) => {
     const obj = e.object;
+    console.log('Drag start:', obj.userData);
     document.body.style.cursor = 'grabbing';
     setIsDragging(true);
     
     if (obj.userData.selectionPiece) {
       // This is a piece from the selection area
       const pieceData = obj.userData.pieceData;
+      console.log('Selection piece data:', pieceData);
       if (pieceData) {
         setDraggingPiece(pieceData.id);
         setDraggedPieceData(pieceData);
@@ -140,7 +155,11 @@ const DragControlWrapper = ({ children }) => {
       }
     } else {
       // This is a piece from the board
-      setDraggingPiece(obj.userData.pieceId);
+      setDraggingPiece({
+        id: obj.userData.pieceId,
+        row: obj.userData.row,
+        col: obj.userData.col
+      });
     }
   };
   
@@ -160,6 +179,7 @@ const DragControlWrapper = ({ children }) => {
     document.body.style.cursor = 'auto';
     setIsDragging(false);
     const obj = e.object;
+    console.log('Drag end:', obj.userData);
     
     // Reset rotation when drag ends
     obj.rotation.y = 0;
@@ -171,6 +191,7 @@ const DragControlWrapper = ({ children }) => {
     
     // Use raycasting to find what's under the piece
     const raycaster = new THREE.Raycaster();
+    raycaster.layers.set(1); // Only check layer 1 (board cells)
     
     // Cast ray down from the piece position
     const origin = new THREE.Vector3(
@@ -185,30 +206,37 @@ const DragControlWrapper = ({ children }) => {
     const intersects = raycaster.intersectObjects(
       scene.children,
       true
-    ).filter(hit => hit.object.userData.isCell);
+    ).filter(hit => hit.object.userData?.isCell);
+    
+    console.log('Intersections:', intersects);
     
     if (intersects.length > 0) {
       const cellData = intersects[0].object.userData;
+      console.log('Cell data:', cellData);
       
       // Check if cell data is valid
       if (cellData.row !== undefined && cellData.col !== undefined) {
         if (obj.userData.selectionPiece && gamePhase === GAME_PHASES.PREPARATION) {
           // Place a new piece from selection to board
-          placePiece(draggingPiece, { 
+          console.log('Placing piece:', draggedPieceData.type, 'at:', cellData);
+          placePiece(draggedPieceData.type, { 
             row: cellData.row, 
             col: cellData.col 
           });
-        } else if (gamePhase === GAME_PHASES.PLAYING) {
+        } else if (gamePhase === GAME_PHASES.PLAYING && typeof draggingPiece === 'object') {
           // Move an existing piece on the board
-          movePiece(draggingPiece, { 
+          console.log('Moving piece from:', draggingPiece, 'to:', cellData);
+          movePiece({ 
+            row: draggingPiece.row, 
+            col: draggingPiece.col 
+          }, { 
             row: cellData.row, 
             col: cellData.col 
           });
         }
       }
     } else {
-      // If dropped outside the board, reset position
-      // The actual reset logic will be handled by the respective components
+      console.log('No valid cell intersection found');
     }
     
     // Reset dragging state
@@ -302,7 +330,8 @@ export default function PuzzlePage() {
     pieces,
     board,
     startPuzzle,
-    resetGame
+    resetGame,
+    puzzleSolved
   } = useGameContext();
   
   const [showFEN, setShowFEN] = useState(false);
@@ -344,6 +373,7 @@ export default function PuzzlePage() {
       <GameOverScreen 
         onTryAgain={handleTryAgain}
         onBackToPuzzles={handleBackToPuzzles}
+        puzzleSolved={puzzleSolved}
       />
     );
   }

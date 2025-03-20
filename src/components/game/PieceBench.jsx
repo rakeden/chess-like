@@ -1,52 +1,29 @@
-import { useRef, useMemo, useState } from 'react';
-import { useThree } from '@react-three/fiber';
+import { useRef, useMemo } from 'react';
 import { useGameContext } from '@/lib/game-context';
 import Piece from './Piece';
 import PieceBenchSurface from './PieceBenchSurface';
-import PieceCount from './PieceCount';
 import PreparationPauseIndicator from './PreparationPauseIndicator';
+import { Html } from '@react-three/drei';
 
 const PIECE_SPACING = 0.8;
 
 export default function PieceBench({ registerDraggable, isDragging, draggingPiece }) {
   const { 
-    availablePieces, 
-    playerColor,
-    isPreparationPaused
+    availablePieces,
+    remainingValue,
+    isPreparationPaused,
+    playerColor
   } = useGameContext();
   
   const pieceRefs = useRef({});
-  const [hoveredPiece, setHoveredPiece] = useState(null);
   
-  // Filter and group pieces by type
-  const { pieceTypesWithCount, piecePositions } = useMemo(() => {
-    // Filter out king and opponent pieces
-    const playerPieces = availablePieces.filter(piece => 
-      piece.color === playerColor && piece.type !== 'king'
-    );
-
-    // Group pieces by type
-    const groupedPieces = playerPieces.reduce((acc, piece) => {
-      if (!acc[piece.type]) {
-        acc[piece.type] = [];
-      }
-      acc[piece.type].push(piece);
-      return acc;
-    }, {});
-
-    // Create representative pieces with counts
-    const typesWithCount = Object.entries(groupedPieces).map(([type, pieces]) => ({
-      ...pieces[0],
-      count: pieces.length,
-      allPieceIds: pieces.map(p => p.id)
-    }));
-
-    // Calculate positions
+  // Calculate positions for all piece types
+  const piecePositions = useMemo(() => {
     const positions = {};
     const availableWidth = 5; // Board width
     const startX = -((availableWidth - PIECE_SPACING) / 2);
     
-    typesWithCount.forEach((piece, index) => {
+    availablePieces.forEach((piece, index) => {
       positions[piece.id] = [
         startX + (index * PIECE_SPACING),
         -0.05,
@@ -54,74 +31,75 @@ export default function PieceBench({ registerDraggable, isDragging, draggingPiec
       ];
     });
 
-    return {
-      pieceTypesWithCount: typesWithCount,
-      piecePositions: positions
-    };
-  }, [availablePieces, playerColor]);
-
-  // Register piece with drag controls
-  const registerPiece = (id, ref) => {
-    if (ref) {
-      pieceRefs.current[id] = ref;
-      
-      if (ref.userData) {
-        ref.userData.selectionPiece = true;
-        
-        const pieceType = pieceTypesWithCount.find(p => p.id === id);
-        if (pieceType) {
-          ref.userData.pieceData = {
-            id: pieceType.allPieceIds[0],
-            type: pieceType.type,
-            color: pieceType.color,
-            value: pieceType.value
-          };
-        }
-      }
-      
-      if (registerDraggable) {
-        registerDraggable(id, ref, 'selection');
-      }
-    }
-  };
+    return positions;
+  }, [availablePieces]);
 
   return (
     <group position={[0, -0.2, -2.5]}>
-      <PieceBenchSurface />
+      <PieceBenchSurface title={`Available Pieces (${remainingValue} points remaining)`} />
       
-      {/* Render pieces */}
-      {pieceTypesWithCount.map((piece) => {
+      {/* Render all piece types */}
+      {availablePieces.map((piece) => {
         const position = piecePositions[piece.id] || [0, 0, 0];
-        const isHovered = hoveredPiece === piece.id;
-        const isBeingDragged = draggingPiece && piece.allPieceIds.includes(draggingPiece);
+        const isBeingDragged = draggingPiece === piece.id;
         
         return (
           <group 
             key={piece.id}
             position={position}
-            userData={{ 
-              pieceId: piece.id,
-              pieceType: piece.type,
-              pieceColor: piece.color
-            }}
-            onPointerOver={() => setHoveredPiece(piece.id)}
-            onPointerOut={() => setHoveredPiece(null)}
           >
             <Piece
               type={piece.type}
               color={piece.color}
-              value={piece.value}
               scale={[12, 12, 12]}
-              visible={true}
-              id={piece.id}
-              position={position}
-              registerPiece={registerPiece}
+              position={[0, 0, 0]}
               isBeingDragged={isBeingDragged}
-              isDraggable={true}
-              isHovered={isHovered}
+              isDraggable={piece.isAffordable}
+              isDisabled={!piece.isAffordable}
+              id={piece.id}
+              ref={ref => {
+                if (ref && piece.isAffordable) {
+                  // Store ref locally
+                  pieceRefs.current[piece.id] = ref;
+                  
+                  // Set up userData for dragging
+                  ref.userData = {
+                    pieceId: piece.id,
+                    pieceType: piece.type,
+                    pieceColor: playerColor,
+                    selectionPiece: true,
+                    pieceData: {
+                      id: piece.id,
+                      type: piece.type,
+                      color: piece.color,
+                      value: piece.value
+                    }
+                  };
+                  
+                  // Register with drag controls
+                  registerDraggable?.(piece.id, ref, 'selection');
+                }
+              }}
             />
             
-            <PieceCount count={piece.count} />
+            {/* Show piece value */}
+            <Html
+              position={[0, -0.3, 0]}
+              center
+              sprite
+              transform
+              scale={0.25}
+              style={{
+                background: piece.isAffordable ? 'rgba(0,0,0,0.8)' : 'rgba(255,0,0,0.8)',
+                padding: '3px 10px',
+                borderRadius: '4px',
+                color: 'white',
+                fontWeight: 'bold',
+                pointerEvents: 'none'
+              }}
+            >
+              {piece.value}
+            </Html>
           </group>
         );
       })}

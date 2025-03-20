@@ -16,7 +16,7 @@ export default function PieceBenchSurface({ title = 'Available Pieces' }) {
 
       {/* Title */}
       <Html
-        position={[0, 0.3, 0]}
+        position={[0, -0.2, 0]}
         center
         sprite
         transform
@@ -24,6 +24,7 @@ export default function PieceBenchSurface({ title = 'Available Pieces' }) {
         style={{
           color: 'white',
           fontWeight: 'bold',
+          fontSize: '0.55rem',
           textShadow: '0 0 5px rgba(0,0,0,0.7)',
           userSelect: 'none',
           pointerEvents: 'none'

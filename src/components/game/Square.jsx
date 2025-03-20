@@ -21,7 +21,8 @@ const Square = ({ position = [0, 0, 0], color = 'white', size = 1, row, col, isH
       meshRef.current.userData = {
         isCell: true,
         row,
-        col
+        col,
+        type: 'cell'
       };
     }
   }, [row, col]);
@@ -30,17 +31,18 @@ const Square = ({ position = [0, 0, 0], color = 'white', size = 1, row, col, isH
   const labelColor = color === '#FFFFFF' || color === 'white' ? '#8B8B8B' : '#f0d9b5';
   
   return (
-    <mesh 
-      position={position} 
-      receiveShadow
-      ref={meshRef}
-    >
-      <boxGeometry args={[size, 0.1, size]} />
-      <meshStandardMaterial 
-        color={isHovered ? '#5d98ff' : color} 
-        roughness={0.5} 
-        metalness={0.2}
-      />
+    <group position={position}>
+      <mesh 
+        receiveShadow
+        ref={meshRef}
+      >
+        <boxGeometry args={[size, 0.05, size]} />
+        <meshStandardMaterial 
+          color={isHovered ? '#5d98ff' : color} 
+          roughness={0.5} 
+          metalness={0.2}
+        />
+      </mesh>
       
       {/* Coordinate label using Three.js Text */}
       <Text
@@ -55,7 +57,7 @@ const Square = ({ position = [0, 0, 0], color = 'white', size = 1, row, col, isH
       >
         {getChessCoordinate(row, col)}
       </Text>
-    </mesh>
+    </group>
   )
 }
 

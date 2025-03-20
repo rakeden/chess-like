@@ -1,4 +1,4 @@
-import { PIECE_VALUES } from './game-context';
+import { PIECE_VALUES } from './puzzle-engine';
 
 // Function to generate a unique ID for pieces
 const createPieceId = (type, row, col, color) => `${type}-${row}-${col}-${color}`;
@@ -20,121 +20,54 @@ const coordsToAlgebraic = (row, col) => {
 
 // Collection of pre-generated puzzles
 const puzzles = [
-  // Puzzle 1: Simple pawn setup with two rooks
   {
     id: 'puzzle-1',
     name: 'Pawn Defense',
-    description: 'Set up your pieces to counter the opponent\'s pawn formation.',
+    description: 'Set up your pieces to counter the opponent\'s pawn formation while protecting your king.',
     difficulty: 1,
     maxPlayerValue: 15,
-    // FEN notation for a 5x5 board
-    fen: 'r1k1r/1ppp1/5/5/5 w - - 0 1',
-    startSquare: null, // For direct move puzzles
-    solution: null, // For direct move puzzles
-    opponentPieces: [
-      { id: createPieceId('rook', 0, 0, 'black'), position: { row: 0, col: 0 }, type: 'rook', color: 'black', value: PIECE_VALUES.rook, algebraic: 'a5' },
-      { id: createPieceId('king', 0, 2, 'black'), position: { row: 0, col: 2 }, type: 'king', color: 'black', value: PIECE_VALUES.king, algebraic: 'c5' },
-      { id: createPieceId('rook', 0, 4, 'black'), position: { row: 0, col: 4 }, type: 'rook', color: 'black', value: PIECE_VALUES.rook, algebraic: 'e5' },
-      { id: createPieceId('pawn', 1, 1, 'black'), position: { row: 1, col: 1 }, type: 'pawn', color: 'black', value: PIECE_VALUES.pawn, algebraic: 'b4' },
-      { id: createPieceId('pawn', 1, 2, 'black'), position: { row: 1, col: 2 }, type: 'pawn', color: 'black', value: PIECE_VALUES.pawn, algebraic: 'c4' },
-      { id: createPieceId('pawn', 1, 3, 'black'), position: { row: 1, col: 3 }, type: 'pawn', color: 'black', value: PIECE_VALUES.pawn, algebraic: 'd4' }
-    ]
+    fen: 'r1k1r/1ppp1/5/5/2K2 w - - 0 1'  // Black king on e3, rooks on a5 and e5, pawns on b4,c4,d4
   },
-  
-  // Puzzle 2: Queen attack
   {
     id: 'puzzle-2',
     name: 'Queen Challenge',
-    description: 'Deal with a powerful queen and her knights.',
+    description: 'Deal with a powerful queen and her knights while keeping your king safe.',
     difficulty: 2,
     maxPlayerValue: 18,
-    fen: '1nkn1/2q2/5/5/5 w - - 0 1',
-    startSquare: null,
-    solution: null,
-    opponentPieces: [
-      { id: createPieceId('king', 0, 2, 'black'), position: { row: 0, col: 2 }, type: 'king', color: 'black', value: PIECE_VALUES.king, algebraic: 'c5' },
-      { id: createPieceId('queen', 1, 2, 'black'), position: { row: 1, col: 2 }, type: 'queen', color: 'black', value: PIECE_VALUES.queen, algebraic: 'c4' },
-      { id: createPieceId('knight', 0, 1, 'black'), position: { row: 0, col: 1 }, type: 'knight', color: 'black', value: PIECE_VALUES.knight, algebraic: 'b5' },
-      { id: createPieceId('knight', 0, 3, 'black'), position: { row: 0, col: 3 }, type: 'knight', color: 'black', value: PIECE_VALUES.knight, algebraic: 'd5' },
-      { id: createPieceId('pawn', 2, 1, 'black'), position: { row: 2, col: 1 }, type: 'pawn', color: 'black', value: PIECE_VALUES.pawn, algebraic: 'b3' },
-      { id: createPieceId('pawn', 2, 3, 'black'), position: { row: 2, col: 3 }, type: 'pawn', color: 'black', value: PIECE_VALUES.pawn, algebraic: 'd3' }
-    ]
+    fen: '1nn2/2q2/3k1/5/2K2 w - - 0 1'  // Black king on e3, queen on c4, knights on b5 and c5
   },
-  
-  // Puzzle 3: Bishop trap
   {
     id: 'puzzle-3',
     name: 'Bishop Challenge',
-    description: 'Beware of the bishops controlling diagonals.',
+    description: 'Beware of the bishops controlling diagonals while protecting your king.',
     difficulty: 2,
     maxPlayerValue: 16,
-    fen: 'r1k2/1b1b1/5/5/p3p w - - 0 1',
-    startSquare: null,
-    solution: null,
-    opponentPieces: [
-      { id: createPieceId('king', 0, 2, 'black'), position: { row: 0, col: 2 }, type: 'king', color: 'black', value: PIECE_VALUES.king, algebraic: 'c5' },
-      { id: createPieceId('bishop', 1, 1, 'black'), position: { row: 1, col: 1 }, type: 'bishop', color: 'black', value: PIECE_VALUES.bishop, algebraic: 'b4' },
-      { id: createPieceId('bishop', 1, 3, 'black'), position: { row: 1, col: 3 }, type: 'bishop', color: 'black', value: PIECE_VALUES.bishop, algebraic: 'd4' },
-      { id: createPieceId('rook', 0, 0, 'black'), position: { row: 0, col: 0 }, type: 'rook', color: 'black', value: PIECE_VALUES.rook, algebraic: 'a5' },
-      { id: createPieceId('pawn', 2, 0, 'black'), position: { row: 2, col: 0 }, type: 'pawn', color: 'black', value: PIECE_VALUES.pawn, algebraic: 'a3' },
-      { id: createPieceId('pawn', 2, 4, 'black'), position: { row: 2, col: 4 }, type: 'pawn', color: 'black', value: PIECE_VALUES.pawn, algebraic: 'e3' }
-    ]
+    fen: 'r3b/1b3/3k1/5/2K2 w - - 0 1'  // Black king on e3, bishops on b4 and e5, rook on a5
   },
-  
-  // Puzzle 4: Knight formation
   {
     id: 'puzzle-4',
     name: 'Knight Ambush',
-    description: 'A formation of knights threatens your position.',
+    description: 'A formation of knights threatens both kings.',
     difficulty: 3,
     maxPlayerValue: 20,
-    fen: 'k3b/rn1n1/2n2/5/5 w - - 0 1',
-    startSquare: null,
-    solution: null,
-    opponentPieces: [
-      { id: createPieceId('king', 0, 0, 'black'), position: { row: 0, col: 0 }, type: 'king', color: 'black', value: PIECE_VALUES.king, algebraic: 'a5' },
-      { id: createPieceId('knight', 1, 1, 'black'), position: { row: 1, col: 1 }, type: 'knight', color: 'black', value: PIECE_VALUES.knight, algebraic: 'b4' },
-      { id: createPieceId('knight', 1, 3, 'black'), position: { row: 1, col: 3 }, type: 'knight', color: 'black', value: PIECE_VALUES.knight, algebraic: 'd4' },
-      { id: createPieceId('knight', 2, 2, 'black'), position: { row: 2, col: 2 }, type: 'knight', color: 'black', value: PIECE_VALUES.knight, algebraic: 'c3' },
-      { id: createPieceId('bishop', 0, 4, 'black'), position: { row: 0, col: 4 }, type: 'bishop', color: 'black', value: PIECE_VALUES.bishop, algebraic: 'e5' },
-      { id: createPieceId('rook', 1, 0, 'black'), position: { row: 1, col: 0 }, type: 'rook', color: 'black', value: PIECE_VALUES.rook, algebraic: 'a4' }
-    ]
+    fen: '2n1b/rn3/3k1/5/2K2 w - - 0 1'  // Black king on e3, knights on c5,b4, bishop on e5, rook on a4
   },
-  
-  // Puzzle 5: Rook fortress
   {
     id: 'puzzle-5',
     name: 'Rook Fortress',
-    description: 'Break through the opponent\'s rook defense.',
+    description: 'Break through the opponent\'s rook defense while maintaining king safety.',
     difficulty: 3,
     maxPlayerValue: 22,
-    fen: 'r1k1r/1p1p1/5/5/r3r w - - 0 1',
-    startSquare: null,
-    solution: null,
-    opponentPieces: [
-      { id: createPieceId('king', 0, 2, 'black'), position: { row: 0, col: 2 }, type: 'king', color: 'black', value: PIECE_VALUES.king, algebraic: 'c5' },
-      { id: createPieceId('rook', 0, 0, 'black'), position: { row: 0, col: 0 }, type: 'rook', color: 'black', value: PIECE_VALUES.rook, algebraic: 'a5' },
-      { id: createPieceId('rook', 0, 4, 'black'), position: { row: 0, col: 4 }, type: 'rook', color: 'black', value: PIECE_VALUES.rook, algebraic: 'e5' },
-      { id: createPieceId('rook', 2, 0, 'black'), position: { row: 2, col: 0 }, type: 'rook', color: 'black', value: PIECE_VALUES.rook, algebraic: 'a3' },
-      { id: createPieceId('pawn', 1, 1, 'black'), position: { row: 1, col: 1 }, type: 'pawn', color: 'black', value: PIECE_VALUES.pawn, algebraic: 'b4' },
-      { id: createPieceId('pawn', 1, 3, 'black'), position: { row: 1, col: 3 }, type: 'pawn', color: 'black', value: PIECE_VALUES.pawn, algebraic: 'd4' }
-    ]
+    fen: 'r2r1/1p1p1/3k1/5/2K2 w - - 0 1'  // Black king on e3, rooks on a5 and d5, pawns on b4 and d4
   },
-  
-  // Puzzle 6: Mate in One position (adding a tactical puzzle)
   {
     id: 'puzzle-6',
     name: 'Checkmate in One',
-    description: 'Find the one move checkmate. Place only the queen to deliver mate.',
+    description: 'Find the one move checkmate with your queen, working around both kings.',
     difficulty: 1,
-    maxPlayerValue: 9, // Only need a queen
-    fen: '3kr/8/8/8/8 w - - 0 1',
-    startSquare: null,
-    solution: 'Qe7#', // Queen to e7 is checkmate
-    opponentPieces: [
-      { id: createPieceId('king', 0, 3, 'black'), position: { row: 0, col: 3 }, type: 'king', color: 'black', value: PIECE_VALUES.king, algebraic: 'd5' },
-      { id: createPieceId('rook', 0, 4, 'black'), position: { row: 0, col: 4 }, type: 'rook', color: 'black', value: PIECE_VALUES.rook, algebraic: 'e5' }
-    ]
+    maxPlayerValue: 9,
+    fen: '3r1/5/3k1/5/2K2 w - - 0 1',  // Black king on e3, rook on d5
+    solution: 'Qc3#'  // Updated solution for the new position
   }
 ];
 

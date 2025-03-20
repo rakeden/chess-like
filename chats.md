@@ -416,36 +416,47 @@ Remove the old PieceSelection.jsx component as it's been replaced by ThreeDPiece
 - Add additional feedback during piece placement
 - Implement piece movement rules in the playing phase
 
-## FEN Notation UI Enhancement
+## FEN Notation Implementation and Engine Refactoring
 
 ### User Request
-Make FEN notation display optional rather than always visible.
+Update the game to properly render pieces based on FEN notation from puzzles.js, rename game-engine.js to puzzle-engine.js, and refactor the code to match the new notation system.
 
 ### Actions Taken
-1. UI enhancement for the FEN display:
-   - Added a toggle button to show/hide FEN notation
-   - Changed the FEN display from always visible to on-demand
-   - Added a "Show FEN" button in the preparation phase
-2. Improved user experience:
-   - Added tooltip information for the FEN button
-   - Repositioned the FEN display to the top-right corner for better UI balance
-   - Maintained copy-to-clipboard functionality in the hidden state
-3. Code optimization:
-   - Added showFEN state variable to track visibility
-   - Implemented toggle functionality
-   - Enhanced styling for better visual integration
+1. Engine Refactoring:
+   - Renamed `game-engine.js` to `puzzle-engine.js` to better reflect its purpose
+   - Renamed `GameEngine` class to `PuzzleEngine` for consistency
+   - Added `checkSolution` method to validate player moves against puzzle solutions
+   - Enhanced puzzle handling with improved FEN notation support
+   - Implemented solution checking against algebraic notation (e.g., "Qc3#")
+
+2. Game Context Updates:
+   - Updated imports to use the new `puzzle-engine.js` file
+   - Added `puzzleSolved` state to track puzzle completion
+   - Enhanced `movePiece` function to check for solutions
+   - Added game phase transition to GAME_OVER when puzzle is solved
+   - Maintained backward compatibility with existing components
+
+3. Solution Handling:
+   - Added logic to parse algebraic notation from puzzle solutions
+   - Implemented piece type detection from notation (Q for queen, R for rook, etc.)
+   - Added target square parsing from algebraic coordinates
+   - Created validation system to check moves against solutions
+   - Added state management for tracking solved puzzles
 
 ### Tech Details
-- Used conditional rendering for the FEN notation display
-- Maintained all existing FEN generation and clipboard functionality
-- Improved the UI layout for better space utilization
-- Enhanced tooltip descriptions for better user guidance
+- Used the utility functions from puzzles.js for algebraic ↔ coordinate conversions
+- Implemented FEN string parsing for 5×5 chess variant
+- Added proper piece placement based on FEN notation
+- Maintained separation between player and opponent pieces
+- Enhanced state management to track puzzle completion
 
 ### Next Steps
-- Consider adding a similar toggle for Stockfish commands
-- Implement user preference saving for FEN display
-- Add keyboard shortcuts for common actions
-- Enhance the FEN display with additional chess position information
+- Refactor PuzzlePage and Board components to align with FEN notation
+- Update the piece selection UI to reflect available pieces based on FEN
+- Enhance the visual feedback for solved puzzles
+- Add additional puzzles with varying difficulties
+- Implement animation for solution success
+- Add proper scoring system based on time and piece value usage
 
 ## Camera Configuration Enhancement
 
@@ -1378,3 +1389,51 @@ Reconsider the implementation of PuzzlePage.jsx and suggest a refactoring for a 
 - Consider extracting more UI components for better reusability
 - Add loading states for asynchronous operations
 - Consider implementing component memoization for performance
+
+## Drag and Drop System Refactoring Analysis
+
+### User Request
+Review and suggest improvements for the current drag and drop implementation.
+
+### Current Implementation Analysis
+1. Current Architecture:
+   - Uses a unified `DragControlWrapper` component that manages both board and piece bench
+   - Relies on ref-based tracking of draggable objects
+   - Handles both piece placement and movement in the same component
+   - Uses raycasting for drop target detection
+
+2. Identified Issues:
+   - Complex state management with multiple interdependent states
+   - Ref-based tracking makes it hard to maintain and debug
+   - Mixed responsibilities between piece placement and movement
+   - Console logging for debugging still present
+   - Potential performance issues with frequent object filtering
+
+3. Suggested Improvements:
+   - Split drag functionality into separate components for board and selection area
+   - Use React state instead of refs for tracking draggable pieces
+   - Implement a more declarative approach to drag and drop
+   - Create separate handlers for piece placement and movement
+   - Add proper TypeScript types for better code maintainability
+   - Implement proper drag constraints based on game phase
+   - Add visual feedback for valid/invalid drop targets
+   - Consider using React context for drag state management
+
+### Next Steps
+1. Create separate drag control components:
+   - `BoardDragControls` for piece movement on the board
+   - `SelectionDragControls` for piece placement from selection
+2. Implement proper state management:
+   - Use React context for shared drag state
+   - Add TypeScript interfaces for drag events
+   - Create proper validation system for moves
+3. Enhance user feedback:
+   - Add visual indicators for valid drop targets
+   - Implement proper drag constraints
+   - Add smooth animations for piece movement
+4. Improve performance:
+   - Remove unnecessary object filtering
+   - Implement proper memoization
+   - Add drag event debouncing
+
+The refactoring will focus on creating a more maintainable and performant drag and drop system while improving the user experience with better visual feedback and smoother interactions.

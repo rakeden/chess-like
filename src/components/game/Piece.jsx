@@ -1,6 +1,6 @@
 import { useRef, useMemo, useEffect, useState } from 'react';
-import { useFrame, useThree } from '@react-three/fiber';
-import { useGLTF, Html } from '@react-three/drei';
+import { useFrame } from '@react-three/fiber';
+import { useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
 
 // Import GLB models
@@ -29,59 +29,36 @@ const PIECE_MODELS = {
   rook: RookModel
 };
 
-// Ease out function
-const easeOutQuad = (t) => {
-  return 1 - (1 - t) * (1 - t);
-};
-
-// Ease in-out function for smooth transitions
-const easeInOutCubic = (t) => {
-  return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
-};
+// Animation easing functions
+const easeOutQuad = (t) => 1 - (1 - t) * (1 - t);
+const easeInOutCubic = (t) => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 
 export default function Piece({ 
   type = 'pawn', 
   color = 'white', 
   position = [0, 0, 0], 
-  scale = [1, 1, 1], 
-  visible = true,
-  value,
-  id,
-  registerPiece = null,
-  isBeingDragged = false,
-  isDraggable = false,
-  isHovered = false
+  scale = [1, 1, 1],
+  onHover = () => {},
+  isInteractive = false,
+  isDisabled = false
 }) {
   const groupRef = useRef();
   const materialRef = useRef();
-  const [opacity, setOpacity] = useState(0);
-  const [animScale, setAnimScale] = useState(0.01); 
-  const [currentPosition, setCurrentPosition] = useState(position);
+  const [opacity, setOpacity] = useState(isDisabled ? 0.3 : 0);
+  const [animScale, setAnimScale] = useState(0.01);
   const animationStartTimeRef = useRef(null);
-  const animationDuration = 1.2;
   const hoverAnimationRef = useRef({ startTime: null, isHovering: false });
-  const HOVER_ANIM_DURATION = 0.3; // duration in seconds
-  const MAX_TILT_ANGLE = -5; // max tilt angle in degrees
   
-  // Skip rendering if not visible
-  if (!visible) return null;
+  const ANIMATION_DURATION = 1.2;
+  const HOVER_ANIM_DURATION = 0.3;
+  const MAX_TILT_ANGLE = -5;
   
-  // Load the appropriate GLB model
+  // Load and clone the model
   const { scene: modelScene } = useGLTF(PIECE_MODELS[type] || PIECE_MODELS.pawn);
-  
-  // Register this piece with the board's drag controls
-  useEffect(() => {
-    if (registerPiece && groupRef.current && id) {
-      registerPiece(id, groupRef.current);
-    }
-  }, [registerPiece, id]);
-  
-  // Clone the model scene to avoid sharing materials between instances
   const model = useMemo(() => {
     const clonedScene = modelScene.clone();
     clonedScene.traverse((node) => {
       if (node.isMesh) {
-        // Create new materials for each piece to allow independent colors
         node.material = new THREE.MeshStandardMaterial({
           color: color === 'white' ? 0xFFFFFF : 0x202020,
           emissive: color === 'white' ? 0x303030 : 0x101010,
@@ -91,165 +68,64 @@ export default function Piece({
           opacity: opacity
         });
         materialRef.current = node.material;
-        
-        // Add userData to each mesh for better raycasting detection
-        node.userData = {
-          isPiece: true,
-          pieceId: id,
-          pieceType: type,
-          pieceColor: color,
-          pieceValue: value,
-          isDraggable,
-          isDragging: isBeingDragged
-        };
       }
     });
-    
-    // Also add userData to the scene root for parent-based detection
-    clonedScene.userData = {
-      isPiece: true,
-      pieceId: id,
-      pieceType: type,
-      pieceColor: color,
-      pieceValue: value,
-      isDraggable,
-      isDragging: isBeingDragged
-    };
-    
     return clonedScene;
-  }, [modelScene, color, opacity, id, type, value, isDraggable, isBeingDragged]);
+  }, [modelScene, color, opacity]);
 
-  // Ensure the piece sits properly on the square surface
-  const safePosition = useMemo(() => {
-    return Array.isArray(position) && position.length >= 3 
-      ? [...position] 
-      : [0, 0, 0];
-  }, [position]);
-  
-  // Start the fade-in animation on mount
+  // Start the appearance animation
   useEffect(() => {
     if (!groupRef.current) return;
     animationStartTimeRef.current = Date.now() / 1000;
   }, []);
   
-  // Update the animation on each frame
+  // Handle animations
   useFrame(() => {
     if (!groupRef.current || !animationStartTimeRef.current) return;
     
     const currentTime = Date.now() / 1000;
     const elapsedTime = currentTime - animationStartTimeRef.current;
-    const progress = Math.min(elapsedTime / animationDuration, 1);
+    const progress = Math.min(elapsedTime / ANIMATION_DURATION, 1);
     
-    // Update scale and opacity
+    // Update scale and opacity during appearance
     const currentScale = easeOutQuad(progress);
     setAnimScale(currentScale);
-    setOpacity(currentScale);
+    setOpacity(isDisabled ? 0.3 : currentScale);
     
-    // Add rotation during the appearance animation
+    // Add rotation during appearance
     if (progress < 1) {
       groupRef.current.rotation.y = 4 * Math.PI * easeOutQuad(progress);
-    }
-    
-    // Animated hover tilt effect
-    if (progress >= 1 && !isBeingDragged) {
-      const hoverRef = hoverAnimationRef.current;
-      
-      // Initialize or update hover animation state
-      if (isHovered && isDraggable && !hoverRef.isHovering) {
-        hoverRef.startTime = currentTime;
-        hoverRef.isHovering = true;
-      } else if (!isHovered && hoverRef.isHovering) {
-        hoverRef.startTime = currentTime;
-        hoverRef.isHovering = false;
-      }
-      
-      // Apply the animated tilt
-      if (hoverRef.startTime) {
-        const hoverElapsed = currentTime - hoverRef.startTime;
-        const hoverProgress = Math.min(hoverElapsed / HOVER_ANIM_DURATION, 1);
-        const easedProgress = easeInOutCubic(hoverProgress);
-        
-        if (hoverRef.isHovering) {
-          // Animate towards tilted state
-          groupRef.current.rotation.x = THREE.MathUtils.degToRad(MAX_TILT_ANGLE * easedProgress);
-        } else {
-          // Animate towards flat state
-          groupRef.current.rotation.x = THREE.MathUtils.degToRad(MAX_TILT_ANGLE * (1 - easedProgress));
-          
-          // Reset when animation completes
-          if (hoverProgress >= 1) {
-            groupRef.current.rotation.x = 0;
-            hoverRef.startTime = null;
-          }
-        }
-      }
-      
-      // Always reset Y rotation when not in appearance animation
+    } else {
       groupRef.current.rotation.y = 0;
     }
   });
-  
-  // Update position in real-time
-  useFrame(() => {
-    if (groupRef.current) {
-      const pos = groupRef.current.position;
-      setCurrentPosition([pos.x, pos.y, pos.z]);
-    }
-  });
-  
-  // Handle hover effects
+
+  // Handle hover interactions
   const handlePointerOver = (e) => {
-    if (isDraggable) {
+    if (isInteractive && !isDisabled) {
       e.stopPropagation();
-      document.body.style.cursor = 'grab';
+      document.body.style.cursor = 'pointer';
+      onHover(true);
     }
   };
   
   const handlePointerOut = (e) => {
-    if (isDraggable) {
+    if (isInteractive && !isDisabled) {
       e.stopPropagation();
       document.body.style.cursor = 'auto';
+      onHover(false);
     }
   };
 
   return (
     <group
-      position={safePosition}
-      scale={scale.map(s => s * animScale)}
       ref={groupRef}
+      position={position}
+      scale={scale.map(s => s * animScale)}
       onPointerOver={handlePointerOver}
       onPointerOut={handlePointerOut}
     >
       <primitive object={model} />
-      
-      {/* Hover indicator */}
-      {isHovered && !isBeingDragged && (
-        <mesh position={[0, 0.5, 0]}>
-          <sphereGeometry args={[0.1, 8, 8]} />
-          <meshBasicMaterial color="#ffcc00" transparent opacity={0.7} />
-        </mesh>
-      )}
-      
-      <Html
-        position={[0, 0, 0]}
-        center
-        sprite
-        transform
-        scale={0.15}
-        style={{
-          color: 'white',
-          backgroundColor: 'rgba(0,0,0,0.5)',
-          padding: '2px 4px',
-          borderRadius: '3px',
-          fontFamily: 'monospace',
-          fontSize: '8px',
-          fontWeight: 'bold',
-          userSelect: 'none',
-          pointerEvents: 'none',
-        }}
-      >
-        {`${currentPosition[0].toFixed(1)},${currentPosition[1].toFixed(1)},${currentPosition[2].toFixed(1)}`}
-      </Html>
     </group>
   );
 } 

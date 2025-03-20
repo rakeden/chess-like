@@ -73,58 +73,60 @@ export function boardToFEN(board, whitePieces, blackPieces, activeColor = 'w') {
   return `${boardPosition} ${activeColor} - - 0 1`;
 }
 
-/**
- * Convert FEN string to board setup
- * @param {String} fen FEN notation string
- * @returns {Object} Board representation with piece positions
- */
-export function fenToBoard(fen) {
-  // Initialize an empty 5x5 board
-  const board = Array(5).fill().map(() => Array(5).fill(null));
+// Helper function to convert a FEN character to piece type
+const fenCharToPiece = (char) => {
+  const pieceMap = {
+    'p': 'pawn',
+    'n': 'knight',
+    'b': 'bishop',
+    'r': 'rook',
+    'q': 'queen',
+    'k': 'king'
+  };
+  return pieceMap[char.toLowerCase()];
+};
+
+// Convert FEN notation to board and pieces arrays
+export const fenToBoard = (fen) => {
+  const board = Array(5).fill(null).map(() => Array(5).fill(null));
+  const pieces = [];
   
-  // Split the FEN string to get just the board position part
-  const [boardPart] = fen.split(' ');
-  const rows = boardPart.split('/');
+  if (!fen) return { board, pieces };
   
-  // Process each row
-  for (let rowIndex = 0; rowIndex < rows.length; rowIndex++) {
+  const [position] = fen.split(' ');
+  const rows = position.split('/');
+  
+  rows.forEach((row, rowIndex) => {
     let colIndex = 0;
-    const row = rows[rowIndex];
     
-    // Process each character in the row
-    for (let charIndex = 0; charIndex < row.length; charIndex++) {
-      const char = row[charIndex];
+    for (let i = 0; i < row.length; i++) {
+      const char = row[i];
       
-      if (/\d/.test(char)) {
-        // If it's a number, skip that many columns
-        colIndex += parseInt(char, 10);
+      if (/[1-5]/.test(char)) {
+        colIndex += parseInt(char);
       } else {
-        // Determine piece color and type
         const isWhite = char === char.toUpperCase();
+        const pieceType = fenCharToPiece(char);
         const color = isWhite ? 'white' : 'black';
-        let type;
+        const position = { row: rowIndex, col: colIndex };
         
-        switch (char.toLowerCase()) {
-          case 'p': type = 'pawn'; break;
-          case 'n': type = 'knight'; break;
-          case 'b': type = 'bishop'; break;
-          case 'r': type = 'rook'; break;
-          case 'q': type = 'queen'; break;
-          case 'k': type = 'king'; break;
-        }
+        const piece = {
+          id: `${pieceType}-${rowIndex}-${colIndex}-${color}`,
+          type: pieceType,
+          color: color,
+          position: position
+        };
         
-        // Place the piece on the board
-        if (type) {
-          board[rowIndex][colIndex] = { type, color };
-        }
+        board[rowIndex][colIndex] = piece;
+        pieces.push(piece);
         
         colIndex++;
       }
     }
-  }
+  });
   
-  return board;
-}
+  return { board, pieces };
+};
 
 /**
  * Generate a UCI (Universal Chess Interface) position command for Stockfish

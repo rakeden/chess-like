@@ -10,7 +10,6 @@ import PieceBench from '@/components/game/PieceBench';
 import { PlayerTurnCard } from '@/components/game/PlayerTurnCard';
 import { PreparationTimer } from '@/components/game/PreparationTimer';
 import { GamePhaseIndicator } from '@/components/game/GamePhaseIndicator';
-import stockfishUtils from '@/lib/stockfish-utils';
 import { getPuzzleById } from '@/lib/puzzles';
 import { DragControls } from '@react-three/drei';
 import * as THREE from 'three';
@@ -301,14 +300,11 @@ export default function PuzzlePage() {
     playerColor,
     currentTurn,
     pieces,
-    opponentPieces,
     board,
     startPuzzle,
-    resetGame,
-    syncBoardWithFen
+    resetGame
   } = useGameContext();
   
-  const [currentFEN, setCurrentFEN] = useState('');
   const [showFEN, setShowFEN] = useState(false);
   const [puzzleData, setPuzzleData] = useState(null);
   const [isDraggingPiece, setIsDraggingPiece] = useState(false);
@@ -329,19 +325,6 @@ export default function PuzzlePage() {
     
     loadPuzzle();
   }, [puzzleId, startPuzzle, navigate]);
-  
-  // Generate and update FEN when the board changes
-  useEffect(() => {
-    if (board && pieces) {
-      const fen = stockfishUtils.boardToFEN(
-        board, 
-        pieces, 
-        opponentPieces, 
-        playerColor === 'white' ? 'w' : 'b'
-      );
-      setCurrentFEN(fen);
-    }
-  }, [board, pieces, opponentPieces, playerColor]);
   
   // Handler functions
   const handleBackToPuzzles = () => {
@@ -379,9 +362,9 @@ export default function PuzzlePage() {
       )}
       
       {/* FEN display (only in preparation phase) */}
-      {gamePhase === GAME_PHASES.PREPARATION && (
+      {gamePhase === GAME_PHASES.PREPARATION && puzzleData && (
         <FenDisplay 
-          currentFEN={currentFEN}
+          currentFEN={puzzleData.fen}
           showFEN={showFEN}
           setShowFEN={setShowFEN}
         />
@@ -404,12 +387,17 @@ export default function PuzzlePage() {
         <SceneSetup isDraggingPiece={isDraggingPiece}>
           <DragControlWrapper>
             <group position={[0, 0, 0]}>
-              <Board />
+              <Board 
+                fen={puzzleData?.fen}
+                playerColor={playerColor}
+                isPreparationPhase={gamePhase === GAME_PHASES.PREPARATION}
+              />
             </group>
             
             {gamePhase === GAME_PHASES.PREPARATION && (
               <group position={[0, 0.4, 6]}>
                 <PieceBench 
+                  maxValue={puzzleData?.maxPlayerValue || 0}
                   onDragStart={() => setIsDraggingPiece(true)} 
                   onDragEnd={() => setIsDraggingPiece(false)} 
                 />

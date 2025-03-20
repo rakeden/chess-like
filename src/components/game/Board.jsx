@@ -23,7 +23,8 @@ const Board = forwardRef(({
   onPieceDragEnd,
   onPiecePlaced,
   squareSize = SQUARE_SIZE,
-  pieceTextures
+  pieceTextures,
+  containerDimensions
 }, ref) => {
   const boardRef = useRef();
   const { app } = useApplication();
@@ -38,27 +39,18 @@ const Board = forwardRef(({
   
   // Calculate board dimensions
   const boardDimension = BOARD_SIZE * squareSize;
-  
-  // Update board position when app is ready and on window resize
+
+  // Update board position when container dimensions change
   useEffect(() => {
-    if (!app?.screen) return;
-    
-    const updateBoardPosition = () => {
-      const centerX = (app.screen.width / 2) - (boardDimension / 2);
-      const centerY = (app.screen.height / 2) - (boardDimension / 2);
-      setBoardPosition({ x: centerX, y: centerY });
-    };
+    if (!containerDimensions) return;
 
-    updateBoardPosition();
-    window.addEventListener('resize', updateBoardPosition);
-
-    return () => {
-      window.removeEventListener('resize', updateBoardPosition);
-    };
-  }, [app?.screen, boardDimension]);
+    const centerX = (containerDimensions.width / 2) - (boardDimension / 2);
+    const centerY = (containerDimensions.height / 2) - (boardDimension / 2);
+    setBoardPosition({ x: centerX, y: centerY });
+  }, [containerDimensions, boardDimension]);
   
   // Gentle floating animation for the board using useTick
-  useTick(() => {
+  useTick((delta) => {
     const offset = Math.sin(Date.now() * 0.001) * 5;
     setBoardOffset(offset);
   });
@@ -66,9 +58,8 @@ const Board = forwardRef(({
   // Draw the floor/background
   const drawFloor = React.useCallback(g => {
     g.clear();
-    g.beginFill(0xe2e8f0);
-    g.drawRect(-100, -100, boardDimension + 200, boardDimension + 200);
-    g.endFill();
+    g.fill(0xe2e8f0);
+    g.rect(-100, -100, boardDimension + 200, boardDimension + 200);
   }, [boardDimension]);
   
   // Handle piece being placed from the board

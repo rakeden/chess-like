@@ -66,7 +66,9 @@ export default function PuzzlePage() {
   const [isDraggingPiece, setIsDraggingPiece] = useState(false);
   const [pieceTextures, setPieceTextures] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
   const boardRef = useRef(null);
+  const containerRef = useRef(null);
   
   // Load piece textures when component mounts
   useEffect(() => {
@@ -131,10 +133,12 @@ export default function PuzzlePage() {
       </div>
       
       {/* 2D Game Scene using Pixi */}
-      <div className="w-full h-full pb-24">
+      <div 
+        ref={containerRef} 
+        className="w-full h-full pb-24"
+      >
         <Application 
-          width={window.innerWidth} 
-          height={window.innerHeight - 128}
+          resizeTo={containerRef.current}
           options={stageOptions}
         >
           <Board 
@@ -145,6 +149,7 @@ export default function PuzzlePage() {
             onPieceDragEnd={() => setIsDraggingPiece(false)}
             squareSize={squareSize}
             pieceTextures={pieceTextures}
+            containerDimensions={dimensions}
           />
           <PieceBench 
             onPieceDragStart={() => setIsDraggingPiece(true)}

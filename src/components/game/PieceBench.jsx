@@ -25,15 +25,13 @@ const BenchSurface = ({ width, title }) => {
     g.clear();
     
     // Draw background with slight gradient
-    g.beginFill(0x333333, 0.8);
-    g.drawRoundedRect(0, 0, width, 100, 10);
-    g.endFill();
+    g.fill({ color: 0x333333, alpha: 0.8 });
+    g.roundRect(0, 0, width, 100, 10);
     
     // Draw highlight line
-    g.lineStyle(2, 0x666666, 0.6);
+    g.setStrokeStyle(2, 0x666666, 0.6);
     g.moveTo(10, 15);
     g.lineTo(width - 10, 15);
-    g.endFill();
   }, [width]);
   
   // Text style for title
@@ -84,9 +82,8 @@ const BenchPiece = ({
   // Draw the value background
   const drawValueBg = React.useCallback(g => {
     g.clear();
-    g.beginFill(isAffordable ? 0x000000 : 0xff0000, 0.7);
-    g.drawRoundedRect(-15, -10, 30, 20, 5);
-    g.endFill();
+    g.fill({ color: isAffordable ? 0x000000 : 0xff0000, alpha: 0.7 });
+    g.roundRect(-15, -10, 30, 20, 5);;
   }, [isAffordable]);
   
   return (

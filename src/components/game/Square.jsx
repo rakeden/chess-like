@@ -17,14 +17,13 @@ const Square = ({
     g.clear();
     
     // Fill with base color
-    g.beginFill(color);
+    g.fill(color);
     
     // Add a subtle border
-    g.lineStyle(1, 0x000000, 0.1);
+    g.setStrokeStyle(1, 0x000000, 0.1);
     
     // Draw square with slightly rounded corners
-    g.drawRoundedRect(0, 0, size, size, 2);
-    g.endFill();
+    g.roundRect(0, 0, size, size, 2);
     
     // Store cell data for hit detection
     g.isCell = true;
@@ -32,10 +31,9 @@ const Square = ({
     
     // Add subtle cell coordinate indicators for debug purposes
     if (process.env.NODE_ENV === 'development') {
-      g.lineStyle(0);
-      g.beginFill(color === 0xFFFFFF ? 0x000000 : 0xFFFFFF, 0.1);
-      g.drawCircle(size * 0.1, size * 0.1, 5);
-      g.endFill();
+      g.setStrokeStyle(0);
+      g.fill({ color: color === 0xFFFFFF ? 0x000000 : 0xFFFFFF, alpha: 0.1 });
+      g.circle(size * 0.1, size * 0.1, 5);
     }
   }, [color, row, col, size]);
 

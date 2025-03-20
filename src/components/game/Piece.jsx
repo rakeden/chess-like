@@ -34,6 +34,11 @@ const easeOutQuad = (t) => {
   return 1 - (1 - t) * (1 - t);
 };
 
+// Ease in-out function for smooth transitions
+const easeInOutCubic = (t) => {
+  return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+};
+
 export default function Piece({ 
   type = 'pawn', 
   color = 'white', 
@@ -54,6 +59,9 @@ export default function Piece({
   const [currentPosition, setCurrentPosition] = useState(position);
   const animationStartTimeRef = useRef(null);
   const animationDuration = 1.2;
+  const hoverAnimationRef = useRef({ startTime: null, isHovering: false });
+  const HOVER_ANIM_DURATION = 0.3; // duration in seconds
+  const MAX_TILT_ANGLE = -5; // max tilt angle in degrees
   
   // Skip rendering if not visible
   if (!visible) return null;
@@ -128,7 +136,8 @@ export default function Piece({
   useFrame(() => {
     if (!groupRef.current || !animationStartTimeRef.current) return;
     
-    const elapsedTime = Date.now() / 1000 - animationStartTimeRef.current;
+    const currentTime = Date.now() / 1000;
+    const elapsedTime = currentTime - animationStartTimeRef.current;
     const progress = Math.min(elapsedTime / animationDuration, 1);
     
     // Update scale and opacity
@@ -141,13 +150,41 @@ export default function Piece({
       groupRef.current.rotation.y = 4 * Math.PI * easeOutQuad(progress);
     }
     
-    // Add hover animation effect
-    if (progress >= 1 && isHovered && !isBeingDragged) {
-      // Apply a gentle rotation when hovered
-      groupRef.current.rotation.y = THREE.MathUtils.degToRad(5);
-      console.log(`Piece ${id} (${type}) is hovered`);
-    } else if (progress >= 1 && !isBeingDragged) {
-      // Reset rotation when not hovered
+    // Animated hover tilt effect
+    if (progress >= 1 && !isBeingDragged) {
+      const hoverRef = hoverAnimationRef.current;
+      
+      // Initialize or update hover animation state
+      if (isHovered && isDraggable && !hoverRef.isHovering) {
+        hoverRef.startTime = currentTime;
+        hoverRef.isHovering = true;
+      } else if (!isHovered && hoverRef.isHovering) {
+        hoverRef.startTime = currentTime;
+        hoverRef.isHovering = false;
+      }
+      
+      // Apply the animated tilt
+      if (hoverRef.startTime) {
+        const hoverElapsed = currentTime - hoverRef.startTime;
+        const hoverProgress = Math.min(hoverElapsed / HOVER_ANIM_DURATION, 1);
+        const easedProgress = easeInOutCubic(hoverProgress);
+        
+        if (hoverRef.isHovering) {
+          // Animate towards tilted state
+          groupRef.current.rotation.x = THREE.MathUtils.degToRad(MAX_TILT_ANGLE * easedProgress);
+        } else {
+          // Animate towards flat state
+          groupRef.current.rotation.x = THREE.MathUtils.degToRad(MAX_TILT_ANGLE * (1 - easedProgress));
+          
+          // Reset when animation completes
+          if (hoverProgress >= 1) {
+            groupRef.current.rotation.x = 0;
+            hoverRef.startTime = null;
+          }
+        }
+      }
+      
+      // Always reset Y rotation when not in appearance animation
       groupRef.current.rotation.y = 0;
     }
   });

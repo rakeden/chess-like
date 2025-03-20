@@ -252,7 +252,7 @@ const SceneSetup = ({ children, isDraggingPiece }) => {
   return (
     <Canvas 
       camera={{ 
-        position: [0, 3, 6],
+        position: [0, 4, 8],
         fov: 45,
         near: 0.1,
         far: 1000

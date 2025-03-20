@@ -1,5 +1,7 @@
 import { useRef, useEffect, useMemo } from 'react'
-import { useFrame } from '@react-three/fiber'
+import { useFrame, useThree } from '@react-three/fiber'
+import { DragControls } from '@react-three/drei'
+import * as THREE from 'three'
 import Square from './Square'
 import Piece from './Piece'
 import { fenToBoard } from '@/lib/stockfish-utils';
@@ -12,17 +14,16 @@ const mapPositionToBoard = (row, col) => {
   return [col - 2, 0.1, row - 2];
 };
 
-export default function Board({ 
+const Board = function Board({ 
   fen,
   playerColor = 'white',
-  isPreparationPhase = false,
-  onPieceHover = () => {},
-  onSquareHover = () => {},
-  registerDraggable,
-  isDragging,
-  draggingPiece
+  onPieceDragStart,
+  onPieceDragEnd,
+  onPiecePlaced
 }) {
   const boardRef = useRef();
+  const draggableRefs = useRef({});
+  const { camera, gl, scene } = useThree();
   
   // Parse FEN and create pieces
   const pieces = useMemo(() => {
@@ -43,6 +44,68 @@ export default function Board({
       boardRef.current.position.y = Math.sin(clock.getElapsedTime() * 0.5) * 0.02;
     }
   });
+
+  // Handle drag events
+  const handleDragStart = (e) => {
+    document.body.style.cursor = 'grabbing';
+    onPieceDragStart?.();
+  };
+
+  const handleDrag = (e) => {
+    if (e.object) {
+      e.object.position.y = 0.1;
+      e.object.rotation.y = THREE.MathUtils.degToRad(5);
+    }
+  };
+
+  const handleDragEnd = (e) => {
+    document.body.style.cursor = 'auto';
+    onPieceDragEnd?.();
+    const obj = e.object;
+    
+    // Reset rotation
+    obj.rotation.y = 0;
+    
+    // Use raycasting to find the target square
+    const raycaster = new THREE.Raycaster();
+    raycaster.layers.set(1); // Only check layer 1 (board cells)
+    
+    const origin = new THREE.Vector3(
+      obj.position.x,
+      obj.position.y + 1,
+      obj.position.z
+    );
+    const direction = new THREE.Vector3(0, -1, 0);
+    raycaster.set(origin, direction);
+    
+    const intersects = raycaster.intersectObjects(
+      scene.children,
+      true
+    ).filter(hit => hit.object.userData?.isCell);
+    
+    if (intersects.length > 0) {
+      const cellData = intersects[0].object.userData;
+      if (cellData.row !== undefined && cellData.col !== undefined) {
+        onPiecePlaced?.({
+          pieceId: obj.userData.pieceId,
+          pieceType: obj.userData.pieceType,
+          from: {
+            row: obj.userData.row,
+            col: obj.userData.col
+          },
+          to: {
+            row: cellData.row,
+            col: cellData.col
+          }
+        });
+      }
+    }
+  };
+
+  // Get draggable pieces
+  const draggableObjects = Object.values(draggableRefs.current)
+    .filter(item => item.ref?.userData?.pieceColor === playerColor)
+    .map(item => item.ref);
 
   return (
     <group ref={boardRef}>
@@ -65,34 +128,57 @@ export default function Board({
               color={isLight ? '#FFFFFF' : '#8B8B8B'}
               row={row}
               col={col}
-              onHover={() => onSquareHover({ row, col })}
               size={SQUARE_SIZE}
             />
           );
         })
       )}
 
-      {/* Render pieces */}
-      {pieces.map((piece) => {
-        if (!piece?.position) return null;
-        
-        const piecePosition = mapPositionToBoard(piece.position.row, piece.position.col);
-        const isDraggable = isPreparationPhase && piece.color === playerColor;
-        
-        return (
-          <Piece
-            key={piece.id}
-            id={piece.id}
-            type={piece.type}
-            color={piece.color}
-            position={piecePosition}
-            scale={[12, 12, 12]}
-            onHover={() => onPieceHover(piece)}
-            isInteractive={isDraggable}
-            ref={ref => isDraggable && registerDraggable?.(piece.id, ref, 'board')}
-          />
-        );
-      })}
+      {/* Draggable pieces */}
+      <DragControls
+        args={[draggableObjects, camera, gl.domElement]}
+        onDragStart={handleDragStart}
+        onDrag={handleDrag}
+        onDragEnd={handleDragEnd}
+      >
+        {/* Render pieces */}
+        {pieces.map((piece) => {
+          if (!piece?.position) return null;
+          
+          const piecePosition = mapPositionToBoard(piece.position.row, piece.position.col);
+          const isDraggable = piece.color === playerColor;
+          
+          return (
+            <group
+              key={piece.id}
+              position={piecePosition}
+              ref={ref => {
+                if (isDraggable && ref) {
+                  ref.userData = {
+                    pieceId: piece.id,
+                    pieceType: piece.type,
+                    pieceColor: piece.color,
+                    row: piece.position.row,
+                    col: piece.position.col
+                  };
+                  draggableRefs.current[piece.id] = { ref };
+                }
+              }}
+            >
+              <Piece
+                id={piece.id}
+                type={piece.type}
+                color={piece.color}
+                position={[0, 0, 0]}
+                scale={[12, 12, 12]}
+                isInteractive={isDraggable}
+              />
+            </group>
+          );
+        })}
+      </DragControls>
     </group>
   );
-} 
+};
+
+export default Board; 

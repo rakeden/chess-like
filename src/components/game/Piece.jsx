@@ -31,27 +31,71 @@ const PIECE_MODELS = {
 
 // Animation easing functions
 const easeOutQuad = (t) => 1 - (1 - t) * (1 - t);
-const easeInOutCubic = (t) => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 
 export default function Piece({ 
   type = 'pawn', 
   color = 'white', 
   position = [0, 0, 0], 
   scale = [1, 1, 1],
-  onHover = () => {},
   isInteractive = false,
-  isDisabled = false
+  isDisabled = false,
+  onReturnToPosition = () => {}
 }) {
   const groupRef = useRef();
-  const materialRef = useRef();
   const [opacity, setOpacity] = useState(isDisabled ? 0.3 : 0);
   const [animScale, setAnimScale] = useState(0.01);
   const animationStartTimeRef = useRef(null);
-  const hoverAnimationRef = useRef({ startTime: null, isHovering: false });
+  
+  // Memoize initial position
+  const initialPosition = useMemo(() => {
+    return Array.isArray(position) ? [...position] : [position.x, position.y, position.z];
+  }, []); // Empty deps array means this only runs once on mount
   
   const ANIMATION_DURATION = 1.2;
-  const HOVER_ANIM_DURATION = 0.3;
-  const MAX_TILT_ANGLE = -5;
+  const RETURN_ANIMATION_DURATION = 0.3;
+  
+  // Function to animate return to initial position
+  const returnToPosition = (immediate = false) => {
+    if (!groupRef.current) return;
+    
+    if (immediate) {
+      groupRef.current.position.set(...initialPosition);
+      onReturnToPosition(initialPosition);
+      return;
+    }
+    
+    const startPos = new THREE.Vector3(
+      groupRef.current.position.x,
+      groupRef.current.position.y,
+      groupRef.current.position.z
+    );
+    const endPos = new THREE.Vector3(...initialPosition);
+    const startTime = Date.now();
+    
+    const animate = () => {
+      const now = Date.now();
+      const elapsed = (now - startTime) / 1000;
+      const progress = Math.min(elapsed / RETURN_ANIMATION_DURATION, 1);
+      
+      if (progress < 1 && groupRef.current) {
+        const t = easeOutQuad(progress);
+        groupRef.current.position.lerpVectors(startPos, endPos, t);
+        requestAnimationFrame(animate);
+      } else if (groupRef.current) {
+        groupRef.current.position.copy(endPos);
+        onReturnToPosition(initialPosition);
+      }
+    };
+    
+    animate();
+  };
+  
+  // Expose returnToPosition function through ref
+  useEffect(() => {
+    if (groupRef.current) {
+      groupRef.current.returnToPosition = returnToPosition;
+    }
+  }, []);
   
   // Load and clone the model
   const { scene: modelScene } = useGLTF(PIECE_MODELS[type] || PIECE_MODELS.pawn);
@@ -67,7 +111,6 @@ export default function Piece({
           transparent: true,
           opacity: opacity
         });
-        materialRef.current = node.material;
       }
     });
     return clonedScene;
@@ -104,9 +147,7 @@ export default function Piece({
   const handlePointerOver = (e) => {
     if (isInteractive && !isDisabled) {
       e.stopPropagation();
-      console.log('mouseover piece')
       document.body.style.cursor = 'pointer';
-      onHover(true);
     }
   };
   
@@ -114,7 +155,6 @@ export default function Piece({
     if (isInteractive && !isDisabled) {
       e.stopPropagation();
       document.body.style.cursor = 'auto';
-      onHover(false);
     }
   };
 

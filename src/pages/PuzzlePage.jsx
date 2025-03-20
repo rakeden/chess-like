@@ -1,18 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Canvas, useThree } from '@react-three/fiber';
+import { Canvas } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
-import { useGameContext, GAME_PHASES } from '@/lib/game-context';
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import Board from '@/components/game/Board';
 import PieceBench from '@/components/game/PieceBench';
-import { PlayerTurnCard } from '@/components/game/PlayerTurnCard';
-import { PreparationTimer } from '@/components/game/PreparationTimer';
-import { GamePhaseIndicator } from '@/components/game/GamePhaseIndicator';
-import { getPuzzleById } from '@/lib/puzzles';
-import { DragControls } from '@react-three/drei';
-import * as THREE from 'three';
 
 // Separated component for FEN display
 const FenDisplay = ({ currentFEN, showFEN, setShowFEN }) => {
@@ -62,217 +55,8 @@ const FenDisplay = ({ currentFEN, showFEN, setShowFEN }) => {
   );
 };
 
-// Game over screen as a separate component
-const GameOverScreen = ({ onTryAgain, onBackToPuzzles, puzzleSolved }) => (
-  <div className="flex items-center justify-center min-h-[calc(100vh-8rem)]">
-    <div className="bg-card p-6 rounded-lg shadow-md max-w-md">
-      <h2 className="text-2xl font-bold mb-4">
-        {puzzleSolved ? 'Puzzle Solved!' : 'Game Over'}
-      </h2>
-      <p className="mb-4">
-        {puzzleSolved 
-          ? 'Congratulations! You found the correct solution to the puzzle.' 
-          : 'The puzzle has ended.'}
-      </p>
-      <div className="flex flex-col gap-3">
-        <Button 
-          size="lg" 
-          className="w-full"
-          onClick={onTryAgain}
-        >
-          Try Again
-        </Button>
-        <Button 
-          variant="outline"
-          size="lg" 
-          className="w-full"
-          onClick={onBackToPuzzles}
-        >
-          Back to Puzzles
-        </Button>
-      </div>
-    </div>
-  </div>
-);
-
-// Unified Drag Control component that wraps both Board and PieceBench
-const DragControlWrapper = ({ children, setIsDraggingPiece }) => {
-  const { 
-    gamePhase, 
-    GAME_PHASES, 
-    playerColor,
-    placePiece,
-    movePiece,
-    pausePreparation,
-    resumePreparation
-  } = useGameContext();
-  
-  const { camera, gl, scene } = useThree();
-  const [isDragging, setIsDragging] = useState(false);
-  const [draggingPiece, setDraggingPiece] = useState(null);
-  const [draggedPieceData, setDraggedPieceData] = useState(null);
-  const draggableRefs = useRef({});
-  
-  // Register draggable refs from children components
-  const registerDraggable = (id, ref, type = 'board') => {
-    if (ref) {
-      draggableRefs.current[id] = { ref, type };
-    }
-  };
-
-  // Get all draggable objects
-  const draggableObjects = Object.values(draggableRefs.current)
-    .filter(item => {
-      const isValid = item.ref && 
-        item.ref.userData && 
-        (item.ref.userData.pieceColor === playerColor || item.ref.userData.selectionPiece) &&
-        (gamePhase === GAME_PHASES.PREPARATION || gamePhase === GAME_PHASES.PLAYING);
-      return isValid;
-    })
-    .map(item => item.ref);
-
-  // Handle dragstart event
-  const handleDragStart = (e) => {
-    const obj = e.object;
-    document.body.style.cursor = 'grabbing';
-    setIsDragging(true);
-    setIsDraggingPiece(true); // Update parent state
-    
-    if (obj.userData.selectionPiece) {
-      // This is a piece from the selection area
-      const pieceData = obj.userData.pieceData;
-      if (pieceData) {
-        setDraggingPiece(pieceData.id);
-        setDraggedPieceData(pieceData);
-        pausePreparation();
-      }
-    } else {
-      // This is a piece from the board
-      setDraggingPiece({
-        id: obj.userData.pieceId,
-        row: obj.userData.row,
-        col: obj.userData.col
-      });
-    }
-  };
-  
-  // Handle drag event to lock the y-position based on where it came from
-  const handleDrag = (e) => {
-    if (e.object) {
-      // Only fix Y position for board pieces, not bench pieces
-      if (!e.object.userData.selectionPiece) {
-        e.object.position.y = 0.1;
-      }
-      
-      // Apply tilt effect while dragging
-      e.object.rotation.y = THREE.MathUtils.degToRad(5);
-    }
-  };
-  
-  // Handle dragend event
-  const handleDragEnd = (e) => {
-    document.body.style.cursor = 'auto';
-    setIsDragging(false);
-    setIsDraggingPiece(false); // Update parent state
-    const obj = e.object;
-    
-    // Reset rotation when drag ends
-    obj.rotation.y = 0;
-    
-    // If this is a bench piece and has an onDragEnd handler, call it
-    if (obj.userData.selectionPiece && obj.userData.onDragEnd) {
-      obj.userData.onDragEnd(obj.position.x, obj.position.y, obj.position.z);
-      if (draggedPieceData) resumePreparation();
-      return;
-    }
-    
-    if (!draggingPiece) {
-      if (draggedPieceData) resumePreparation();
-      return;
-    }
-    
-    // Use raycasting to find what's under the piece
-    const raycaster = new THREE.Raycaster();
-    raycaster.layers.set(1); // Only check layer 1 (board cells)
-    
-    // Cast ray down from the piece position
-    const origin = new THREE.Vector3(
-      obj.position.x,
-      obj.position.y + 1,
-      obj.position.z
-    );
-    const direction = new THREE.Vector3(0, -1, 0);
-    raycaster.set(origin, direction);
-    
-    // Find intersections with board cells
-    const intersects = raycaster.intersectObjects(
-      scene.children,
-      true
-    ).filter(hit => hit.object.userData?.isCell);
-    
-    console.log('Intersections:', intersects);
-    
-    if (intersects.length > 0) {
-      const cellData = intersects[0].object.userData;
-      console.log('Cell data:', cellData);
-      
-      // Check if cell data is valid
-      if (cellData.row !== undefined && cellData.col !== undefined) {
-        if (obj.userData.selectionPiece && gamePhase === GAME_PHASES.PREPARATION) {
-          // Place a new piece from selection to board
-          console.log('Placing piece:', draggedPieceData.type, 'at:', cellData);
-          placePiece(draggedPieceData.type, { 
-            row: cellData.row, 
-            col: cellData.col 
-          });
-        } else if (gamePhase === GAME_PHASES.PLAYING && typeof draggingPiece === 'object') {
-          // Move an existing piece on the board
-          console.log('Moving piece from:', draggingPiece, 'to:', cellData);
-          movePiece({ 
-            row: draggingPiece.row, 
-            col: draggingPiece.col 
-          }, { 
-            row: cellData.row, 
-            col: cellData.col 
-          });
-        }
-      }
-    } else {
-      console.log('No valid cell intersection found');
-    }
-    
-    // Reset dragging state
-    setDraggingPiece(null);
-    setDraggedPieceData(null);
-    if (gamePhase === GAME_PHASES.PREPARATION) {
-      resumePreparation();
-    }
-  };
-  
-  return (
-    <group>
-      <DragControls
-        onDragStart={handleDragStart}
-        onDrag={handleDrag}
-        onDragEnd={handleDragEnd}
-      >
-        {/* Children should be inside DragControls */}
-        {React.Children.map(children, child => 
-          React.cloneElement(child, { 
-            registerDraggable, 
-            isDragging,
-            draggingPiece 
-          })
-        )}
-      </DragControls>
-    </group>
-  );
-};
-
 // Camera and lighting setup as a separate component
 const SceneSetup = ({ children, isDraggingPiece }) => {
-  const controlsRef = useRef(null);
-  
   return (
     <Canvas 
       camera={{ 
@@ -284,7 +68,6 @@ const SceneSetup = ({ children, isDraggingPiece }) => {
       shadows
     >
       <OrbitControls
-        ref={controlsRef}
         enablePan={!isDraggingPiece}
         enableRotate={!isDraggingPiece}
         enableZoom={!isDraggingPiece}
@@ -319,83 +102,25 @@ const SceneSetup = ({ children, isDraggingPiece }) => {
 export default function PuzzlePage() {
   const { puzzleId } = useParams();
   const navigate = useNavigate();
-  const { 
-    gamePhase, 
-    GAME_PHASES, 
-    playerColor,
-    currentTurn,
-    pieces,
-    board,
-    startPuzzle,
-    resetGame,
-    puzzleSolved
-  } = useGameContext();
-  
   const [showFEN, setShowFEN] = useState(false);
-  const [puzzleData, setPuzzleData] = useState(null);
   const [isDraggingPiece, setIsDraggingPiece] = useState(false);
   
-  // Load the puzzle when component mounts or puzzleId changes
-  useEffect(() => {
-    const loadPuzzle = () => {
-      if (puzzleId) {
-        const puzzle = getPuzzleById(puzzleId);
-        if (puzzle) {
-          setPuzzleData(puzzle);
-          startPuzzle(puzzle);
-        } else {
-          navigate('/puzzles');
-        }
-      }
-    };
-    
-    loadPuzzle();
-  }, [puzzleId, startPuzzle, navigate]);
+  // Mock data for testing - replace with props or context
+  const mockFEN = '5/5/5/5/5 w - - 0 1';
+  const mockPlayerColor = 'white';
   
-  // Handler functions
   const handleBackToPuzzles = () => {
-    resetGame();
     navigate('/puzzles');
   };
-  
-  const handleTryAgain = () => {
-    if (puzzleData) {
-      startPuzzle(puzzleData);
-    }
-  };
-  
-  // Render game over screen if in GAME_OVER phase
-  if (gamePhase === GAME_PHASES.GAME_OVER) {
-    return (
-      <GameOverScreen 
-        onTryAgain={handleTryAgain}
-        onBackToPuzzles={handleBackToPuzzles}
-        puzzleSolved={puzzleSolved}
-      />
-    );
-  }
 
   return (
     <div className="w-full h-[calc(100vh-8rem)] relative">
-      {/* Top UI components */}
-      {gamePhase === GAME_PHASES.PLAYING ? <PlayerTurnCard /> : <PreparationTimer />}
-      <GamePhaseIndicator />
-      
-      {/* Show opponent's turn message when relevant */}
-      {gamePhase === GAME_PHASES.PLAYING && currentTurn !== playerColor && (
-        <div className="absolute top-20 left-4 z-10 bg-black/50 text-white px-4 py-2 rounded-md">
-          Opponent's turn
-        </div>
-      )}
-      
-      {/* FEN display (only in preparation phase) */}
-      {gamePhase === GAME_PHASES.PREPARATION && puzzleData && (
-        <FenDisplay 
-          currentFEN={puzzleData.fen}
-          showFEN={showFEN}
-          setShowFEN={setShowFEN}
-        />
-      )}
+      {/* FEN display */}
+      <FenDisplay 
+        currentFEN={mockFEN}
+        showFEN={showFEN}
+        setShowFEN={setShowFEN}
+      />
       
       {/* Back button */}
       <div className="absolute top-20 left-4 z-10">
@@ -412,24 +137,21 @@ export default function PuzzlePage() {
       {/* 3D Scene */}
       <div className="w-full h-full pb-24">
         <SceneSetup isDraggingPiece={isDraggingPiece}>
-          <DragControlWrapper setIsDraggingPiece={setIsDraggingPiece}>
-            <group position={[0, 0, 0]}>
-              <Board 
-                fen={puzzleData?.fen}
-                playerColor={playerColor}
-                isPreparationPhase={gamePhase === GAME_PHASES.PREPARATION}
-              />
-            </group>
-            
-            {gamePhase === GAME_PHASES.PREPARATION && (
-              <group position={[0, 0.4, 6]}>
-                <PieceBench 
-                  onDragStart={() => setIsDraggingPiece(true)} 
-                  onDragEnd={() => setIsDraggingPiece(false)} 
-                />
-              </group>
-            )}
-          </DragControlWrapper>
+          <group position={[0, 0, 0]}>
+            <Board 
+              fen={mockFEN}
+              playerColor={mockPlayerColor}
+              onPieceDragStart={() => setIsDraggingPiece(true)}
+              onPieceDragEnd={() => setIsDraggingPiece(false)}
+            />
+          </group>
+          
+          <group position={[0, 0.4, 6]}>
+            <PieceBench 
+              onPieceDragStart={() => setIsDraggingPiece(true)}
+              onPieceDragEnd={() => setIsDraggingPiece(false)}
+            />
+          </group>
         </SceneSetup>
       </div>
     </div>

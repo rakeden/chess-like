@@ -31,7 +31,6 @@ export class PuzzleEngine {
     this.opponentPieces = [];
     this.selectedPieces = [];
     this.playerColor = 'white';
-    this.currentTurn = 'white';
     this.gamePhase = GAME_PHASES.MENU;
     this.currentFEN = '5/5/5/5/5 w - - 0 1';
     this.currentPuzzle = null;
@@ -109,74 +108,40 @@ export class PuzzleEngine {
     return true;
   }
 
-  // Move a piece during gameplay
-  movePiece(fromPosition, toPosition) {
+  // Animate a move (for playing phase)
+  animateMove(fromPosition, toPosition) {
     if (this.gamePhase !== GAME_PHASES.PLAYING) return false;
-    if (this.currentTurn !== this.playerColor) return false;
 
+    // Get the piece at the from position
     const piece = this.board[fromPosition.row][fromPosition.col];
-    if (!piece || piece.color !== this.playerColor) return false;
+    if (!piece) return false;
 
     // Move the piece
     this.board[toPosition.row][toPosition.col] = piece;
     this.board[fromPosition.row][fromPosition.col] = null;
 
     // Update piece position in pieces array
-    const pieceIndex = this.pieces.findIndex(p => p.id === piece.id);
-    if (pieceIndex !== -1) {
-      this.pieces[pieceIndex] = { ...piece, position: toPosition };
+    const updatePieceInArray = (pieceArray, pieceId, newPosition) => {
+      const idx = pieceArray.findIndex(p => p.id === pieceId);
+      if (idx !== -1) {
+        pieceArray[idx] = { ...pieceArray[idx], position: newPosition };
+      }
+    };
+
+    // Update in appropriate array based on color
+    if (piece.color === this.playerColor) {
+      updatePieceInArray(this.pieces, piece.id, toPosition);
+    } else {
+      updatePieceInArray(this.opponentPieces, piece.id, toPosition);
     }
 
     this.updateFEN();
-    this.currentTurn = this.currentTurn === 'white' ? 'black' : 'white';
-
     return true;
   }
 
-  // Check if the move is a solution to the puzzle
-  checkSolution(fromPosition, toPosition) {
-    // For puzzles with solutions, check if the move matches
-    if (this.currentPuzzle?.solution) {
-      const { algebraicToCoords, coordsToAlgebraic } = require('./puzzles').chessUtils;
-      
-      // Parse the solution (e.g., "Qc3#")
-      const pieceType = this.currentPuzzle.solution.charAt(0) === this.currentPuzzle.solution.charAt(0).toUpperCase() 
-        ? this.currentPuzzle.solution.charAt(0).toLowerCase() 
-        : 'pawn';
-      
-      const targetSquare = this.currentPuzzle.solution.match(/[a-e][1-5]/)[0];
-      const targetCoords = algebraicToCoords(targetSquare);
-      
-      // Get piece at fromPosition
-      const piece = this.board[fromPosition.row][fromPosition.col];
-      
-      // Check if the correct piece is moving to the correct square
-      return piece && 
-        piece.type === (pieceType === 'q' ? 'queen' : 
-                      pieceType === 'r' ? 'rook' : 
-                      pieceType === 'b' ? 'bishop' : 
-                      pieceType === 'n' ? 'knight' : 
-                      pieceType === 'k' ? 'king' : 'pawn') && 
-        toPosition.row === targetCoords.row && 
-        toPosition.col === targetCoords.col;
-    }
-    
-    return false;
-  }
-
-  // Get best move from API
-  async getBestMove() {
-    try {
-      // TODO: Implement API call to get best move
-      // This would typically call your chess engine API
-      return {
-        from: { row: 0, col: 0 },
-        to: { row: 1, col: 0 }
-      };
-    } catch (error) {
-      console.error('Error getting best move:', error);
-      return null;
-    }
+  // Get FEN string for current board state
+  getFEN() {
+    return this.currentFEN;
   }
 
   // Update FEN string
@@ -185,7 +150,7 @@ export class PuzzleEngine {
       this.board,
       this.pieces,
       this.opponentPieces,
-      this.currentTurn === 'white' ? 'w' : 'b'
+      'w' // Always white's turn in this simplified version
     );
   }
 
@@ -193,7 +158,6 @@ export class PuzzleEngine {
   startPlaying() {
     if (this.gamePhase === GAME_PHASES.PREPARATION) {
       this.gamePhase = GAME_PHASES.PLAYING;
-      this.currentTurn = 'white';
     }
   }
 
@@ -205,7 +169,6 @@ export class PuzzleEngine {
       opponentPieces: this.opponentPieces,
       selectedPieces: this.selectedPieces,
       playerColor: this.playerColor,
-      currentTurn: this.currentTurn,
       gamePhase: this.gamePhase,
       availablePieces: this.pieceManager.getAvailablePieces(this.playerColor),
       remainingValue: this.pieceManager.getRemainingValue(),

@@ -8,8 +8,8 @@ Let's define a software design document for a roque-like chess game, which is es
 - Per stage a certain chess piece value maximum is defined.
 - The openents pieces are selected and placed randomly
 - The player selects pieces and not exceeding the stage max value
-- Then the game starts
-- stockfish runs every turn for 2 seconds or with a certain depth and plays the best move
+- Then the game phase starts
+- stockfish calculates an plays the best move
 
 # Design
 - minimalist design, unsaturated colors, maybe a little bit flat

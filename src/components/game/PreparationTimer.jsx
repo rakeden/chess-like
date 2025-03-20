@@ -1,22 +1,44 @@
+import { useState, useEffect } from 'react';
 import { useGameContext } from '@/lib/game-context';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { useState, useEffect } from 'react';
 
-export function PreparationTimer() {
+export default function PreparationTimer() {
   const { 
-    preparationTimeLeft, 
-    finishPreparation, 
-    GAME_PHASES, 
-    gamePhase,
+    gamePhase, 
+    GAME_PHASES,
     isPreparationPaused,
-    pausePreparation,
-    resumePreparation
+    finishPreparation
   } = useGameContext();
   
+  const [timeLeft, setTimeLeft] = useState(60);
+  
+  useEffect(() => {
+    let timer;
+    
+    if (gamePhase === GAME_PHASES.PREPARATION && !isPreparationPaused && timeLeft > 0) {
+      timer = setInterval(() => {
+        setTimeLeft(prev => prev - 1);
+      }, 1000);
+    } else if (timeLeft === 0 && gamePhase === GAME_PHASES.PREPARATION) {
+      finishPreparation();
+    }
+    
+    return () => {
+      if (timer) clearInterval(timer);
+    };
+  }, [timeLeft, gamePhase, isPreparationPaused, finishPreparation, GAME_PHASES.PREPARATION]);
+  
+  // Reset timer when entering preparation phase
+  useEffect(() => {
+    if (gamePhase === GAME_PHASES.PREPARATION) {
+      setTimeLeft(60);
+    }
+  }, [gamePhase]);
+
   // Calculate progress percentage
-  const timePercentage = (preparationTimeLeft / 60) * 100;
+  const timePercentage = (timeLeft / 60) * 100;
   
   // Format time as MM:SS
   const formatTime = (seconds) => {
@@ -27,8 +49,8 @@ export function PreparationTimer() {
   
   // Determine color class based on time remaining
   const getColorClass = () => {
-    if (preparationTimeLeft > 30) return 'bg-green-500';
-    if (preparationTimeLeft > 10) return 'bg-amber-500';
+    if (timeLeft > 30) return 'bg-green-500';
+    if (timeLeft > 10) return 'bg-amber-500';
     return 'bg-red-500';
   };
   
@@ -45,7 +67,7 @@ export function PreparationTimer() {
             {isPreparationPaused ? 'Paused' : 'Preparation Phase'}
           </h3>
           <span className={`text-xl font-mono font-bold ${isPreparationPaused ? 'text-amber-500' : ''}`}>
-            {formatTime(preparationTimeLeft)}
+            {formatTime(timeLeft)}
           </span>
         </div>
         

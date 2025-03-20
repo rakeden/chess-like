@@ -1,51 +1,12 @@
-# Chessy - Refactored with Pixi.js
+# React + Vite
 
-This project has been refactored from Three.js to Pixi.js, a powerful 2D WebGL renderer.
+This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
-## Refactoring Changes
+Currently, two official plugins are available:
 
-The main changes include:
+- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
+- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
 
-1. Replaced Three.js with Pixi.js for 2D rendering
-2. Converted all 3D models to 2D sprites
-3. Reimplemented drag and drop functionality
-4. Maintained the same chess puzzle gameplay
+## Expanding the ESLint configuration
 
-## Getting Started
-
-```bash
-# Install dependencies
-npm install
-
-# Run the development server
-npm run dev
-```
-
-## Required Assets
-
-Before running the app, you'll need to add chess piece assets:
-
-### Chess Piece Images
-
-Place PNG images for chess pieces in the `public/assets/pieces/` directory with the following naming convention:
-
-- White pieces: `w_pawn.png`, `w_knight.png`, `w_bishop.png`, `w_rook.png`, `w_queen.png`, `w_king.png`
-- Black pieces: `b_pawn.png`, `b_knight.png`, `b_bishop.png`, `b_rook.png`, `b_queen.png`, `b_king.png`
-
-You can use any standard chess piece sets in PNG format with transparent backgrounds. The images should be approximately 120x120 pixels.
-
-## Project Structure
-
-- `src/pages/PuzzlePage.jsx`: Main puzzle page component
-- `src/components/game/Board.jsx`: Chess board component
-- `src/components/game/Piece.jsx`: Chess piece component
-- `src/components/game/PieceBench.jsx`: Component for holding available pieces
-- `src/components/game/Square.jsx`: Board square component
-- `src/lib/stockfish-utils.js`: Utilities for chess notation and board state
-
-## Next Steps
-
-1. Add proper piece assets in the `public/assets/pieces/` directory
-2. Implement piece placement logic with the Stockfish engine
-3. Add puzzle completion validation
-4. Enhance the piece movement with animations
+If you are developing a production application, we recommend using TypeScript and enable type-aware lint rules. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.

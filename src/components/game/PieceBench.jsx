@@ -1,4 +1,4 @@
-import { useRef, useMemo } from 'react';
+import { useRef, useMemo, useState, useEffect } from 'react';
 import { useGameContext } from '@/lib/game-context';
 import Piece from './Piece';
 import PieceBenchSurface from './PieceBenchSurface';
@@ -16,22 +16,29 @@ export default function PieceBench({ registerDraggable, isDragging, draggingPiec
   } = useGameContext();
   
   const pieceRefs = useRef({});
+  const [piecePositions, setPiecePositions] = useState({});
   
-  // Calculate positions for all piece types
-  const piecePositions = useMemo(() => {
+  // Initialize positions for new pieces
+  useEffect(() => {
     const positions = {};
     const availableWidth = 5; // Board width
     const startX = -((availableWidth - PIECE_SPACING) / 2);
     
     availablePieces.forEach((piece, index) => {
-      positions[piece.id] = [
-        startX + (index * PIECE_SPACING),
-        -0.05,
-        0
-      ];
+      // Only set initial position if not already set
+      if (!piecePositions[piece.id]) {
+        positions[piece.id] = [
+          startX + (index * PIECE_SPACING),
+          -0.05,
+          0
+        ];
+      }
     });
-
-    return positions;
+    
+    setPiecePositions(prev => ({
+      ...prev,
+      ...positions
+    }));
   }, [availablePieces]);
 
   return (
@@ -56,6 +63,7 @@ export default function PieceBench({ registerDraggable, isDragging, draggingPiec
               isBeingDragged={isBeingDragged}
               isDraggable={piece.isAffordable}
               isDisabled={!piece.isAffordable}
+              isInteractive={piece.isAffordable}
               id={piece.id}
               ref={ref => {
                 if (ref && piece.isAffordable) {
@@ -73,6 +81,12 @@ export default function PieceBench({ registerDraggable, isDragging, draggingPiec
                       type: piece.type,
                       color: piece.color,
                       value: piece.value
+                    },
+                    onDragEnd: (x, y, z) => {
+                      setPiecePositions(prev => ({
+                        ...prev,
+                        [piece.id]: [x, y, z]
+                      }));
                     }
                   };
                   

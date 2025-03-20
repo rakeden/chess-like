@@ -96,7 +96,7 @@ const GameOverScreen = ({ onTryAgain, onBackToPuzzles, puzzleSolved }) => (
 );
 
 // Unified Drag Control component that wraps both Board and PieceBench
-const DragControlWrapper = ({ children }) => {
+const DragControlWrapper = ({ children, setIsDraggingPiece }) => {
   const { 
     gamePhase, 
     GAME_PHASES, 
@@ -117,11 +117,9 @@ const DragControlWrapper = ({ children }) => {
   const registerDraggable = (id, ref, type = 'board') => {
     if (ref) {
       draggableRefs.current[id] = { ref, type };
-      console.log(`Registered draggable: ${id}, type: ${type}`);
-      console.log('userData:', ref.userData);
     }
   };
-  
+
   // Get all draggable objects
   const draggableObjects = Object.values(draggableRefs.current)
     .filter(item => {
@@ -129,10 +127,6 @@ const DragControlWrapper = ({ children }) => {
         item.ref.userData && 
         (item.ref.userData.pieceColor === playerColor || item.ref.userData.selectionPiece) &&
         (gamePhase === GAME_PHASES.PREPARATION || gamePhase === GAME_PHASES.PLAYING);
-      
-      if (!isValid) {
-        console.log('Filtered out piece:', item.ref?.userData);
-      }
       return isValid;
     })
     .map(item => item.ref);
@@ -140,14 +134,13 @@ const DragControlWrapper = ({ children }) => {
   // Handle dragstart event
   const handleDragStart = (e) => {
     const obj = e.object;
-    console.log('Drag start:', obj.userData);
     document.body.style.cursor = 'grabbing';
     setIsDragging(true);
+    setIsDraggingPiece(true); // Update parent state
     
     if (obj.userData.selectionPiece) {
       // This is a piece from the selection area
       const pieceData = obj.userData.pieceData;
-      console.log('Selection piece data:', pieceData);
       if (pieceData) {
         setDraggingPiece(pieceData.id);
         setDraggedPieceData(pieceData);
@@ -166,8 +159,10 @@ const DragControlWrapper = ({ children }) => {
   // Handle drag event to lock the y-position based on where it came from
   const handleDrag = (e) => {
     if (e.object) {
-      // Use consistent Y position for all dragged objects
-      e.object.position.y = 0.1;
+      // Only fix Y position for board pieces, not bench pieces
+      if (!e.object.userData.selectionPiece) {
+        e.object.position.y = 0.1;
+      }
       
       // Apply tilt effect while dragging
       e.object.rotation.y = THREE.MathUtils.degToRad(5);
@@ -178,11 +173,18 @@ const DragControlWrapper = ({ children }) => {
   const handleDragEnd = (e) => {
     document.body.style.cursor = 'auto';
     setIsDragging(false);
+    setIsDraggingPiece(false); // Update parent state
     const obj = e.object;
-    console.log('Drag end:', obj.userData);
     
     // Reset rotation when drag ends
     obj.rotation.y = 0;
+    
+    // If this is a bench piece and has an onDragEnd handler, call it
+    if (obj.userData.selectionPiece && obj.userData.onDragEnd) {
+      obj.userData.onDragEnd(obj.position.x, obj.position.y, obj.position.z);
+      if (draggedPieceData) resumePreparation();
+      return;
+    }
     
     if (!draggingPiece) {
       if (draggedPieceData) resumePreparation();
@@ -249,25 +251,20 @@ const DragControlWrapper = ({ children }) => {
   
   return (
     <group>
-      {/* DragControls for all pieces */}
-      {draggableObjects.length > 0 && (
-        <DragControls
-          transformGroup
-          args={[draggableObjects, camera, gl.domElement]}
-          onDragStart={handleDragStart}
-          onDrag={handleDrag}
-          onDragEnd={handleDragEnd}
-        />
-      )}
-      
-      {/* Render children with register function */}
-      {React.Children.map(children, child => 
-        React.cloneElement(child, { 
-          registerDraggable, 
-          isDragging,
-          draggingPiece 
-        })
-      )}
+      <DragControls
+        onDragStart={handleDragStart}
+        onDrag={handleDrag}
+        onDragEnd={handleDragEnd}
+      >
+        {/* Children should be inside DragControls */}
+        {React.Children.map(children, child => 
+          React.cloneElement(child, { 
+            registerDraggable, 
+            isDragging,
+            draggingPiece 
+          })
+        )}
+      </DragControls>
     </group>
   );
 };
@@ -288,7 +285,7 @@ const SceneSetup = ({ children, isDraggingPiece }) => {
     >
       <OrbitControls
         ref={controlsRef}
-        enablePan={false}
+        enablePan={!isDraggingPiece}
         enableRotate={!isDraggingPiece}
         enableZoom={!isDraggingPiece}
         minPolarAngle={Math.PI / 3}
@@ -415,7 +412,7 @@ export default function PuzzlePage() {
       {/* 3D Scene */}
       <div className="w-full h-full pb-24">
         <SceneSetup isDraggingPiece={isDraggingPiece}>
-          <DragControlWrapper>
+          <DragControlWrapper setIsDraggingPiece={setIsDraggingPiece}>
             <group position={[0, 0, 0]}>
               <Board 
                 fen={puzzleData?.fen}
@@ -427,7 +424,6 @@ export default function PuzzlePage() {
             {gamePhase === GAME_PHASES.PREPARATION && (
               <group position={[0, 0.4, 6]}>
                 <PieceBench 
-                  maxValue={puzzleData?.maxPlayerValue || 0}
                   onDragStart={() => setIsDraggingPiece(true)} 
                   onDragEnd={() => setIsDraggingPiece(false)} 
                 />

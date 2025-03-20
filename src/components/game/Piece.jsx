@@ -104,6 +104,7 @@ export default function Piece({
   const handlePointerOver = (e) => {
     if (isInteractive && !isDisabled) {
       e.stopPropagation();
+      console.log('mouseover piece')
       document.body.style.cursor = 'pointer';
       onHover(true);
     }

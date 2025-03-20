@@ -138,7 +138,7 @@ export default function PuzzlePage() {
         className="w-full h-full pb-24"
       >
         <Application 
-          resizeTo={containerRef.current}
+          resizeTo={containerRef}
           options={stageOptions}
         >
           <Board 

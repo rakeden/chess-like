@@ -5,9 +5,8 @@ Chess-like is a roguelike autobattler based on chess mechanics. This unique game
 
 ## Core Concept
 - 5x5 chessboard
-- 3 consecutive stages with increasing difficulty
-- Stage-specific piece value maximums
-- Opponent pieces randomly selected and placed
+- different puzzle stages with predefined puzzle positions
+- Stage-specific player pieces value maximums
 - Player selects pieces without exceeding the stage's max value
 - AI-powered opponent (Stockfish) makes optimal moves each turn
 
@@ -78,35 +77,5 @@ We'll build Chess-like in two main phases:
 2. Puzzle Mode screen with selectable stages using Card components
 3. Game screen layout:
    - Main game board (three.js)
-   - Piece selection Sheet component
-   - Game status in HoverCard
-   - Move history in Collapsible
-   - Notifications using Toast
-
-## Component Structure
-```jsx
-src/
-  components/
-    ui/          # shadcn components
-      button.jsx
-      card.jsx
-      dialog.jsx
-      sheet.jsx
-      ...
-    game/        # game-specific components
-      Board.jsx  # three.js chess board
-      Piece.jsx  # chess piece component
-      Controls.jsx
-      Status.jsx
-    layout/      # layout components
-      Header.jsx
-      Footer.jsx
-```
-
-## Next Steps
-1. Set up shadcn/ui components and theme
-2. Implement 5x5 chessboard rendering
-3. Add basic piece movement logic
-4. Create the piece selection UI using Sheet component
-5. Implement the AI opponent
-6. Add game state management with Toast notifications
+   - Piece Bench
+   - Game state in HoverCard

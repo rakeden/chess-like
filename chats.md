@@ -46,3 +46,9 @@ Enhanced the animation when pieces are removed from the board:
 - Increased animation duration from 500ms to 800ms for a smoother effect
 
 These changes make the piece removal more visually appealing and provide better feedback to the user when pieces are dragged out of bounds.
+
+### 2023-10-XX: Fixed Shadow Persistence Bug
+Fixed an issue where the drag shadow would remain visible when a piece was removed from the board:
+- Added an `isRemoved` state variable to track when pieces are removed
+- Updated the `DragShadow` component to hide when a piece is removed
+- This ensures that no visual artifacts remain after a piece is removed from the board

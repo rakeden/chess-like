@@ -61,6 +61,9 @@ const ChessPiece = ({ type, position, color = 'white' }) => {
   // Track if piece is outside board boundaries
   const [isOutOfBounds, setIsOutOfBounds] = useState(false)
   
+  // Track if piece has been removed from the board
+  const [isRemoved, setIsRemoved] = useState(false)
+  
   // Effect to dispatch custom event when out of bounds state changes
   useEffect(() => {
     // Create and dispatch a custom event when the out of bounds state changes
@@ -165,6 +168,7 @@ const ChessPiece = ({ type, position, color = 'white' }) => {
             }
           })
           
+          setIsRemoved(true)
           return
         }
         
@@ -274,7 +278,7 @@ const ChessPiece = ({ type, position, color = 'white' }) => {
       {/* Drag shadow underneath */}
       <DragShadow 
         position={currentPosition} 
-        visible={isDragging} 
+        visible={isDragging && !isRemoved} 
         isOutOfBounds={isOutOfBounds}
       />
       

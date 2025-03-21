@@ -1,12 +1,92 @@
-import { useRef, useEffect, Suspense } from 'react'
+import { useRef, useEffect, Suspense, useState } from 'react'
 import { useThree } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
 import * as THREE from 'three'
+import { useSpring, animated } from '@react-spring/three'
 import ChessPiece from './ChessPiece'
+
+// Custom component for the board boundary glow effect
+const BoardBoundary = ({ visible, boardSize }) => {
+  const boundaryRef = useRef()
+  
+  // Use react-spring for animation
+  const [springs, api] = useSpring(() => ({
+    opacity: 0,
+    scale: 0.9,
+    config: {
+      tension: 60,
+      friction: 14
+    }
+  }))
+  
+  // Update animation when visibility changes
+  useEffect(() => {
+    if (visible) {
+      // Start the pulsing animation
+      let cancel
+      const startPulsing = () => {
+        api.start({
+          to: async (next) => {
+            // Create a continuous pulsing effect
+            while (visible) {
+              await next({ opacity: 0.10, scale: 1 })
+              await next({ opacity: 0.01, scale: 0.9 })
+            }
+          }
+        })
+      }
+      
+      startPulsing()
+      return () => cancel && cancel()
+    } else {
+      // Reset animation when not visible
+      api.start({ opacity: 0, scale: 0.9 })
+    }
+  }, [visible, api])
+  
+  // Calculate the size to be slightly larger than the board
+  const boundarySize = boardSize + 2
+  
+  return (
+    <animated.mesh 
+      ref={boundaryRef}
+      position={[0, -1 + 0.02, 0]} 
+      rotation={[-Math.PI / 2, 0, 0]} 
+      visible={visible}
+      scale-x={springs.scale}
+      scale-y={springs.scale}
+    >
+      <planeGeometry args={[boundarySize, boundarySize]} />
+      <animated.meshBasicMaterial 
+        color="#ff0000" 
+        transparent 
+        opacity={springs.opacity} 
+        side={THREE.DoubleSide}
+        blending={THREE.AdditiveBlending}
+      />
+    </animated.mesh>
+  )
+}
 
 const Scene = () => {
   const sceneRef = useRef()
   const { camera } = useThree()
+  
+  // Track if any piece is out of bounds
+  const [showBoundary, setShowBoundary] = useState(false)
+  
+  // Create a custom event for pieces going out of bounds
+  useEffect(() => {
+    const handlePieceOutOfBounds = (e) => {
+      setShowBoundary(e.detail.isOutOfBounds)
+    }
+    
+    window.addEventListener('piece-out-of-bounds', handlePieceOutOfBounds)
+    
+    return () => {
+      window.removeEventListener('piece-out-of-bounds', handlePieceOutOfBounds)
+    }
+  }, [])
   
   useEffect(() => {
     // Set initial camera position
@@ -19,11 +99,10 @@ const Scene = () => {
   // Generate chessboard squares
   const renderChessboard = () => {
     const squares = []
-    const size = 0.95 // Size of each square (slightly smaller to create gaps)
-    const gap = 0.05 // Gap between squares
-    const fullSize = 1 // Full size including gap
+    const size = 1.0 // Size of each square (full size, no gaps)
+    const fullSize = 1.0 // Full size of each square (no gaps)
     const boardSize = 5 // 5x5 chessboard
-    const squareHeight = 0.15 // Height of each square
+    const squareHeight = 0.05 // Height of each square
     const boardElevation = 0.1 // Elevation from the ground
     
     // Board base has been moved to main render function for shadow receiving
@@ -64,6 +143,11 @@ const Scene = () => {
         minPolarAngle={Math.PI / 6}
         maxPolarAngle={Math.PI / 3}
         target={[0, 0, 1]}
+        mouseButtons={{
+          LEFT: THREE.MOUSE.NONE,
+          MIDDLE: THREE.MOUSE.DOLLY,
+          RIGHT: THREE.MOUSE.ROTATE
+        }}
       />
       <ambientLight intensity={0.3} />
       <spotLight 
@@ -87,6 +171,9 @@ const Scene = () => {
           </mesh>
         </group>
       </Suspense>
+      
+      {/* Red glowing boundary */}
+      <BoardBoundary visible={showBoundary} boardSize={5} />
       
       {/* Chessboard */}
       {renderChessboard()}

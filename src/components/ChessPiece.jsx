@@ -6,35 +6,40 @@ import { useGesture } from 'react-use-gesture'
 import { useSpring, animated } from '@react-spring/three'
 
 // Shadow component to show under dragged pieces
-const DragShadow = ({ position, visible, size = 1 }) => {
+const DragShadow = ({ position, visible, size = 1, isOutOfBounds = false }) => {
   return (
     <mesh position={[position[0], -0.95, position[2]]} rotation={[-Math.PI / 2, 0, 0]} visible={visible}>
       <circleGeometry args={[size * 0.4, 32]} />
-      <meshBasicMaterial color="#000000" transparent opacity={0.3} />
+      <meshBasicMaterial color={isOutOfBounds ? "#ff0000" : "#000000"} transparent opacity={isOutOfBounds ? 0.4 : 0.3} />
     </mesh>
   )
 }
 
 // Create a simple chess piece shape as fallback
-const FallbackPiece = ({ position, color, scale = [1, 1, 1], ...props }) => {
+const FallbackPiece = ({ position, color, scale = [1, 1, 1], isOutOfBounds = false, ...props }) => {
+  // Mix the original color with red if out of bounds
+  const pieceColor = isOutOfBounds 
+    ? (color === 'white' ? '#ffcccc' : '#662222') 
+    : (color === 'white' ? '#ffffff' : '#333333')
+    
   return (
     <animated.group position={position} scale={scale} {...props}>
       {/* Base of the piece */}
       <mesh position={[0, 0.15, 0]} castShadow>
         <cylinderGeometry args={[0.3, 0.3, 0.1, 16]} />
-        <meshStandardMaterial color={color === 'white' ? '#ffffff' : '#333333'} />
+        <meshStandardMaterial color={pieceColor} />
       </mesh>
       
       {/* Body of the piece */}
       <mesh position={[0, 0.5, 0]} castShadow>
         <cylinderGeometry args={[0.2, 0.3, 0.7, 16]} />
-        <meshStandardMaterial color={color === 'white' ? '#ffffff' : '#333333'} />
+        <meshStandardMaterial color={pieceColor} />
       </mesh>
       
       {/* Top of the piece */}
       <mesh position={[0, 0.9, 0]} castShadow>
         <sphereGeometry args={[0.25, 16, 16]} />
-        <meshStandardMaterial color={color === 'white' ? '#ffffff' : '#333333'} />
+        <meshStandardMaterial color={pieceColor} />
       </mesh>
     </animated.group>
   )
@@ -53,17 +58,36 @@ const ChessPiece = ({ type, position, color = 'white' }) => {
   // Track current position of the piece
   const [currentPosition, setCurrentPosition] = useState(initialPosition)
   
+  // Track if piece is outside board boundaries
+  const [isOutOfBounds, setIsOutOfBounds] = useState(false)
+  
+  // Effect to dispatch custom event when out of bounds state changes
+  useEffect(() => {
+    // Create and dispatch a custom event when the out of bounds state changes
+    const event = new CustomEvent('piece-out-of-bounds', {
+      detail: { isOutOfBounds: isOutOfBounds }
+    })
+    window.dispatchEvent(event)
+  }, [isOutOfBounds])
+  
+  // Get reference to the actual board size from Scene
+  const boardSize = 5 // This should match the boardSize in Scene component
+  const halfBoardSize = boardSize / 2
+  
   // Setup spring for animations
   const [spring, set] = useSpring(() => ({ 
     position: initialPosition, 
     scale: [13,13,13],
     rotation: [0, 0, 0],
     config: { 
-      friction: 25,
-      tension: 380
+      friction: 10,
+      tension: 300
     } 
   }))
   
+  // Stored material references for highlighting
+  const materialsRef = useRef(new Map())
+
   // Track if currently dragging to prevent other interactions
   const [isDragging, setIsDragging] = useState(false)
   
@@ -89,6 +113,17 @@ const ChessPiece = ({ type, position, color = 'white' }) => {
       const newX = dragStart.current.piecePos[0] + x / aspect
       const newZ = dragStart.current.piecePos[2] + y / aspect
       
+      // Check if outside board boundaries
+      const pieceRadius = 0.15 // Approximate radius of a chess piece
+      const isOutside = 
+        newX < -halfBoardSize - pieceRadius || 
+        newX > halfBoardSize + pieceRadius || 
+        newZ < -halfBoardSize - pieceRadius || 
+        newZ > halfBoardSize + pieceRadius
+        
+      // Update out of bounds state
+      setIsOutOfBounds(isOutside)
+      
       // Update current position
       setCurrentPosition([newX, currentPosition[1], newZ])
 
@@ -104,9 +139,9 @@ const ChessPiece = ({ type, position, color = 'white' }) => {
         const snappedX = Math.round(newX)
         const snappedZ = Math.round(newZ)
         
-        // Ensure piece stays within board boundaries (0-7 for standard chess board)
-        const boundedX = Math.max(0, Math.min(7, snappedX))
-        const boundedZ = Math.max(0, Math.min(7, snappedZ))
+        // Ensure piece stays within board boundaries
+        const boundedX = Math.max(-halfBoardSize + 0.5, Math.min(halfBoardSize - 0.5, snappedX))
+        const boundedZ = Math.max(-halfBoardSize + 0.5, Math.min(halfBoardSize - 0.5, snappedZ))
         
         // Update the current position to the snapped position
         setCurrentPosition([boundedX, currentPosition[1], boundedZ])
@@ -118,6 +153,7 @@ const ChessPiece = ({ type, position, color = 'white' }) => {
         })
         
         setIsDragging(false)
+        setIsOutOfBounds(false)
         
         // Log the move
         console.log(`Moved ${type} to position [${boundedX}, ${currentPosition[1]}, ${boundedZ}]`)
@@ -136,6 +172,33 @@ const ChessPiece = ({ type, position, color = 'white' }) => {
       }
     }
   })
+  
+  // Apply highlighting to model when out of bounds
+  useEffect(() => {
+    if (processedScene && isOutOfBounds) {
+      // Apply red tint to all materials
+      processedScene.traverse((node) => {
+        if (node.isMesh && node.material) {
+          // Save original color if not already saved
+          if (!materialsRef.current.has(node.uuid)) {
+            const originalColor = node.material.color.clone()
+            materialsRef.current.set(node.uuid, originalColor)
+          }
+          
+          // Apply red tint
+          node.material.color.lerp(new THREE.Color(1, 0, 0), 0.3)
+        }
+      })
+    } else if (processedScene && !isOutOfBounds) {
+      // Restore original colors
+      processedScene.traverse((node) => {
+        if (node.isMesh && node.material && materialsRef.current.has(node.uuid)) {
+          const originalColor = materialsRef.current.get(node.uuid)
+          node.material.color.copy(originalColor)
+        }
+      })
+    }
+  }, [processedScene, isOutOfBounds])
   
   // Simplified approach: get model from our preloaded store
   useEffect(() => {
@@ -161,6 +224,12 @@ const ChessPiece = ({ type, position, color = 'white' }) => {
     coloredModel.traverse((node) => {
       if (node.isMesh) {
         node.castShadow = true
+        
+        // Store original colors for later highlighting
+        if (!materialsRef.current.has(node.uuid) && node.material) {
+          const originalColor = node.material.color.clone()
+          materialsRef.current.set(node.uuid, originalColor)
+        }
       }
     })
     
@@ -170,11 +239,20 @@ const ChessPiece = ({ type, position, color = 'white' }) => {
   return (
     <>
       {/* Drag shadow underneath */}
-      <DragShadow position={currentPosition} visible={isDragging} />
+      <DragShadow 
+        position={currentPosition} 
+        visible={isDragging} 
+        isOutOfBounds={isOutOfBounds}
+      />
       
       {/* Actual chess piece */}
       {loadError || !processedScene ? (
-        <FallbackPiece {...spring} {...bind()} color={color} />
+        <FallbackPiece 
+          {...spring} 
+          {...bind()} 
+          color={color} 
+          isOutOfBounds={isOutOfBounds}
+        />
       ) : (
         <animated.group ref={modelRef} {...spring} {...bind()}>
           <primitive object={processedScene} dispose={null} />

@@ -3,6 +3,7 @@ import { useThree } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
 import * as THREE from 'three'
 import { useSpring, animated } from '@react-spring/three'
+import { Physics, useBox, usePlane } from '@react-three/cannon'
 import ChessPiece from './ChessPiece'
 import PieceTray from './PieceTray'
 
@@ -69,6 +70,42 @@ const BoardBoundary = ({ visible, boardSize }) => {
   )
 }
 
+// Physical plane component that serves as the ground
+const PhysicalGround = (props) => {
+  const [ref] = usePlane(() => ({ 
+    rotation: [-Math.PI / 2, 0, 0], 
+    position: [0, -3.5, 0],
+    ...props
+  }))
+  
+  return (
+    <mesh ref={ref} receiveShadow>
+      <planeGeometry args={[50, 50]} />
+      <meshStandardMaterial color="#909090" roughness={0.8} metalness={0.2} />
+    </mesh>
+  )
+}
+
+// Physical chess square component
+const PhysicalChessSquare = ({ position, color, size, height }) => {
+  const [ref] = useBox(() => ({
+    mass: 0, // Static object
+    position,
+    args: [size, height, size], // Size of the square (width, height, depth)
+  }))
+  
+  return (
+    <mesh ref={ref} receiveShadow>
+      <boxGeometry args={[size, height, size]} />
+      <meshStandardMaterial 
+        color={color} 
+        metalness={0.1}
+        roughness={color === '#f0d9b5' ? 0.5 : 0.7}
+      />
+    </mesh>
+  )
+}
+
 const Scene = () => {
   const sceneRef = useRef()
   const { camera } = useThree()
@@ -78,14 +115,14 @@ const Scene = () => {
   
   // State to track all pieces on the board
   const [pieces, setPieces] = useState([
-    { id: 'wK', type: "King", position: [0, -0.85 + 0.1, 0], color: "white" },
-    { id: 'wQ', type: "Queen", position: [-1, -0.85 + 0.1, 0], color: "white" },
-    { id: 'wB', type: "Bishop", position: [1, -0.85 + 0.1, 0], color: "white" },
-    { id: 'wN', type: "Knight", position: [-2, -0.85 + 0.1, 0], color: "white" },
-    { id: 'wR', type: "Rook", position: [2, -0.85 + 0.1, 0], color: "white" },
-    { id: 'bK', type: "King", position: [0, -0.85 + 0.1, 2], color: "black" },
-    { id: 'bQ', type: "Queen", position: [0, -0.85 + 0.1, -2], color: "black" },
-    { id: 'bP', type: "Pawn", position: [1, -0.85 + 0.1, -1], color: "black" }
+    { id: 'wK', type: "King", position: [0, -0.85, 0], color: "white" },
+    { id: 'wQ', type: "Queen", position: [-1, -0.85, 0], color: "white" },
+    { id: 'wB', type: "Bishop", position: [1, -0.85, 0], color: "white" },
+    { id: 'wN', type: "Knight", position: [-2, -0.85, 0], color: "white" },
+    { id: 'wR', type: "Rook", position: [2, -0.85, 0], color: "white" },
+    { id: 'bK', type: "King", position: [0, -0.85, 2], color: "black" },
+    { id: 'bQ', type: "Queen", position: [0, -0.85, -2], color: "black" },
+    { id: 'bP', type: "Pawn", position: [1, -0.85, -1], color: "black" }
   ])
   
   // Create a custom event for pieces going out of bounds
@@ -143,7 +180,7 @@ const Scene = () => {
     console.log("Scene mounted, camera setup complete")
   }, [camera])
 
-  // Generate chessboard squares
+  // Generate chessboard squares as physical objects
   const renderChessboard = () => {
     const squares = []
     const size = 1.0 // Size of each square (full size, no gaps)
@@ -152,27 +189,21 @@ const Scene = () => {
     const squareHeight = 0.05 // Height of each square
     const boardElevation = 0.1 // Elevation from the ground
     
-    // Board base has been moved to main render function for shadow receiving
-    
     for (let i = 0; i < boardSize; i++) {
       for (let j = 0; j < boardSize; j++) {
         const isWhite = (i + j) % 2 === 0
         const posX = (i - boardSize / 2 + 0.5) * fullSize
         const posZ = (j - boardSize / 2 + 0.5) * fullSize
+        const posY = -1 + squareHeight/2 + boardElevation
         
         squares.push(
-          <mesh 
+          <PhysicalChessSquare 
             key={`${i}-${j}`} 
-            position={[posX, -1 + squareHeight/2 + boardElevation, posZ]}
-            receiveShadow
-          >
-            <boxGeometry args={[size, squareHeight, size]} />
-            <meshStandardMaterial 
-              color={isWhite ? '#f0d9b5' : '#b58863'} 
-              metalness={0.1}
-              roughness={isWhite ? 0.5 : 0.7}
-            />
-          </mesh>
+            position={[posX, posY, posZ]}
+            color={isWhite ? '#f0d9b5' : '#b58863'}
+            size={size}
+            height={squareHeight}
+          />
         )
       }
     }
@@ -222,22 +253,34 @@ const Scene = () => {
       {/* Red glowing boundary */}
       <BoardBoundary visible={showBoundary} boardSize={5} />
       
-      {/* Chessboard */}
-      {renderChessboard()}
+      {/* Physics world */}
+      <Physics 
+        gravity={[0, -9.81, 0]} 
+        defaultContactMaterial={{ 
+          friction: 0.5,
+          restitution: 0.3
+        }}
+      >
+        {/* Physical ground plane */}
+        <PhysicalGround />
+        
+        {/* Physical chessboard squares */}
+        {renderChessboard()}
+        
+        {/* Chess pieces - now rendered from state */}
+        <Suspense fallback={null}>
+          {pieces.map(piece => (
+            <ChessPiece 
+              key={piece.id}
+              type={piece.type} 
+              position={piece.position} 
+              color={piece.color} 
+            />
+          ))}
+        </Suspense>
+      </Physics>
       
-      {/* Chess pieces - now rendered from state */}
-      <Suspense fallback={null}>
-        {pieces.map(piece => (
-          <ChessPiece 
-            key={piece.id}
-            type={piece.type} 
-            position={piece.position} 
-            color={piece.color} 
-          />
-        ))}
-      </Suspense>
-      
-      {/* Piece Tray */}
+      {/* Piece Tray - outside of physics context for now */}
       <PieceTray />
     </group>
   )

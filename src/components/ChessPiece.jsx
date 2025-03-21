@@ -9,7 +9,7 @@ import { useSpring, animated } from '@react-spring/three'
 const DragShadow = ({ position, visible, size = 1, isOutOfBounds = false }) => {
   return (
     <mesh position={[position[0], -0.8, position[2]]} rotation={[-Math.PI / 2, 0, 0]} visible={visible}>
-      <circleGeometry args={[size * 0.4, 32]} />
+      <circleGeometry args={[size * 0.3, 32]} />
       <meshBasicMaterial color={isOutOfBounds ? "#ff0000" : "#000000"} transparent opacity={isOutOfBounds ? 0.2 : 0.1} />
     </mesh>
   )
@@ -72,10 +72,10 @@ const ChessPiece = ({ type, position, color = 'white', isTrayPiece = false, scal
   
   // Setup spring for animations
   const [spring, set] = useSpring(() => ({ 
-    position: initialPosition, 
-    scale: wasFromTray ? [13 * getScaleFactor(), 13 * getScaleFactor(), 13 * getScaleFactor()] : [6, 6, 6], 
+    position: [initialPosition[0], initialPosition[1] + 0.3, initialPosition[2]], // Start slightly above
+    scale: [0, 0, 0], // Start at zero scale
     rotation: [0, 0, 0],
-    opacity: 0,
+    opacity: 0, // Start fully transparent
     config: { 
       friction: 10,
       tension: 300
@@ -104,6 +104,15 @@ const ChessPiece = ({ type, position, color = 'white', isTrayPiece = false, scal
         }
         // Prevent camera movement when dragging pieces
         if (event.stopPropagation) event.stopPropagation()
+        
+        // Immediately scale to full size when drag starts for tray pieces
+        if (wasFromTray && !onBoard) {
+          set({
+            scale: [13, 13, 13], // Full size immediately when dragged
+            position: [currentPosition[0], currentPosition[1] + 0.2, currentPosition[2]], // Lift piece
+            rotation: [0, 0, 0]
+          })
+        }
       }
 
       // Calculate the new position based on mouse movement from the start of this drag
@@ -126,7 +135,7 @@ const ChessPiece = ({ type, position, color = 'white', isTrayPiece = false, scal
 
       // Update position
       set({ 
-        position: [newX, currentPosition[1] + 0.2, newZ], // Lift piece during drag
+        position: [newX, currentPosition[1] + 0.2, newZ], // Lift piece by 0.1 during drag
         // Add a slight tilt during drag for feedback
         rotation: [y / 1000, -x / 1000, 0]
       })
@@ -169,6 +178,7 @@ const ChessPiece = ({ type, position, color = 'white', isTrayPiece = false, scal
             set({
               position: initialPosition,
               rotation: [0, 0, 0],
+              scale: [13 * scale, 13 * scale, 13 * scale], // Return to tray size
               config: {
                 tension: 200,
                 friction: 20
@@ -274,7 +284,7 @@ const ChessPiece = ({ type, position, color = 'white', isTrayPiece = false, scal
           scale: hovering ? [hoverScale, hoverScale, hoverScale] : [baseScale, baseScale, baseScale],
           position: [
             currentPosition[0], 
-            hovering ? currentPosition[1] + 0.1 : currentPosition[1], 
+            currentPosition[1], 
             currentPosition[2]
           ]
         })
@@ -348,61 +358,25 @@ const ChessPiece = ({ type, position, color = 'white', isTrayPiece = false, scal
   // Animate the piece appearance when it first loads
   useEffect(() => {
     if (processedScene) {
-      // Add a slight randomness to stagger appearances (reduced by half)
-      const randomDelay = Math.random() * 50; // Reduced from 100ms
-      const totalDelay = entryDelay / 2 + randomDelay; // Cut delay in half
+      // Add a slight randomness to stagger appearances
+      const randomDelay = Math.random() * 50;
+      const totalDelay = entryDelay / 2 + randomDelay;
       
-      if (wasFromTray) {
-        // For tray pieces - more subtle and faster animation
-        setTimeout(() => {
-          set({
-            scale: [13 * scale, 13 * scale, 13 * scale],
-            position: [initialPosition[0], initialPosition[1] + 0.1, initialPosition[2]],
-            opacity: 1,
-            config: {
-              friction: 12, // Lower friction for faster movement
-              tension: 180, // Higher tension for faster acceleration
-              mass: 0.8 // Lower mass for quicker response
-            }
-          });
-          
-          // Settle to final position (half the time)
-          setTimeout(() => {
-            set({
-              position: initialPosition,
-              config: {
-                friction: 10,
-                tension: 150
-              }
-            });
-          }, 75); // Reduced from 150ms
-        }, totalDelay);
-      } else {
-        // For board pieces - faster animation
-        setTimeout(() => {
-          set({
-            scale: [13, 13, 13],
-            position: [initialPosition[0], initialPosition[1] + 0.15, initialPosition[2]],
-            opacity: 1,
-            config: {
-              friction: 14, // Lower friction for faster movement
-              tension: 210, // Higher tension for faster acceleration
-              mass: 1.0 // Lower mass for quicker response
-            }
-          });
-          
-          // After piece rises, settle it down to final position (half the time)
-          setTimeout(() => {
-            set({
-              position: initialPosition,
-              config: {
-                friction: 10,
-                tension: 160
-              }
-            });
-          }, 100); // Reduced from 200ms
-        }, totalDelay);
-      }
+      // Animation for all pieces - use the same appearance animation
+      setTimeout(() => {
+        const baseScale = wasFromTray && !onBoard ? 13 * scale : 13;
+        
+        set({
+          scale: [baseScale, baseScale, baseScale],
+          position: initialPosition,
+          opacity: 1,
+          config: {
+            friction: 12, // Lower friction for faster movement
+            tension: 180, // Higher tension for faster acceleration
+            mass: 0.8 // Lower mass for quicker response
+          }
+        });
+      }, totalDelay);
     }
   }, [processedScene]);
   

@@ -30,7 +30,9 @@ const PieceTray = ({ onPieceDragged }) => {
   
   // Position the tray in front of the board
   const trayBaseZ = 3 // Distance in front of the board (reduced from 4.5)
-  const trayBaseY = -0.85 // Same Y height as board pieces
+  const squareHeight = 0.05 // Height of each square
+  const boardElevation = 0.1 // Elevation from the ground (same as chessboard)
+  const trayBaseY = -1 + squareHeight + boardElevation // Y position at the top surface of squares
   const spacing = 0.8 // Spacing between each piece (reduced from 1)
   
   // Render the tray squares (neutral color)
@@ -41,7 +43,7 @@ const PieceTray = ({ onPieceDragged }) => {
       return (
         <mesh 
           key={`tray-square-${index}`} 
-          position={[posX, -1 + 0.025, trayBaseZ]}
+          position={[posX, -1 + squareHeight/2 + boardElevation, trayBaseZ]}
           receiveShadow
         >
           <boxGeometry args={[0.6, 0.05, 0.6]} /> {/* Reduced from 0.8 to 0.6 */}
@@ -71,7 +73,7 @@ const PieceTray = ({ onPieceDragged }) => {
           key={pieceKey}
           id={piece.id}
           type={piece.type} 
-          position={[posX, trayBaseY + 0.1, trayBaseZ]} 
+          position={[posX, trayBaseY, trayBaseZ]} 
           color={piece.color}
           isTrayPiece={true}
           scale={0.5} // Half the normal size

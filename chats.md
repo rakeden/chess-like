@@ -157,3 +157,49 @@ Doubled the speed of the piece appearance animation for a snappier, more respons
 - Maintained the same visual effect but with twice the speed
 
 These changes result in a more immediate visual response when the game starts or when new pieces are added to the board, creating a snappier, more responsive feel while preserving the polished appearance effect.
+
+### 2023-10-XX: Implemented Physics Engine
+Integrated @react-three/cannon physics engine to add realistic physical interactions:
+- Installed @react-three/cannon using npm (with legacy peer dependencies to resolve React 19 compatibility issues)
+- Added Physics provider component to establish a physics world
+- Created a physical ground plane beneath the board for pieces to fall onto when removed
+- Implemented a physical board base with static properties (mass = 0)
+- Set realistic physics parameters:
+  - Standard Earth gravity (9.81 m/s²)
+  - Appropriate friction (0.5) for chess pieces
+  - Medium restitution (0.3) for moderate bounce effects
+- Added physics-based components:
+  - PhysicalGround: An invisible plane beneath the board that can receive falling pieces
+  - PhysicalBoardBase: A static wooden base for the chessboard with physical properties
+- Kept the PieceTray outside of the physics context for now to maintain existing functionality
+
+This initial physics implementation provides the foundation for more realistic piece interactions, particularly for the falling animation when pieces are removed from the board. Future enhancements will include full physics properties for the chess pieces themselves.
+
+### 2023-10-XX: Refactored Chessboard with Physical Squares
+Enhanced the physics implementation by replacing the wooden board base with individual physical squares:
+- Removed the PhysicalBoardBase component completely
+- Created a new PhysicalChessSquare component with physics properties
+- Modified the renderChessboard function to use these physical squares
+- Each square now has:
+  - Static physics body (mass = 0)
+  - Accurate collision geometry matching visual appearance
+  - Individual physical properties for each square
+  - Proper physical positioning that matches the visual board layout
+- This approach provides better physical interactions as each square can now:
+  - Interact individually with chess pieces
+  - Receive proper collisions and impacts
+  - Support more complex physics behavior in the future
+
+This refactoring improves the physical fidelity of the chessboard and provides a more accurate foundation for piece-board interactions. By making each square a separate physical entity, we enable more realistic gameplay mechanics and prepare for future enhancements like board manipulation or custom game modes.
+
+### 2023-10-XX: Adjusted Physical Ground Position
+Modified the position of the physical ground plane to improve the physics simulation:
+- Lowered the ground plane from -1.5 units to -3.5 units on the y-axis (2 units lower)
+- This adjustment creates more space for pieces to fall when removed from the board
+- The increased falling distance allows for:
+  - More dramatic falling animations
+  - Better visual feedback when pieces are discarded
+  - More time for physics-based rotations and movements to develop
+  - Clearer distinction between the playable area and the "discard zone"
+
+This change enhances the visual experience of piece removal while maintaining the same gameplay mechanics. The additional space beneath the board allows for more elaborate physics interactions without affecting the core gameplay on the board surface.

@@ -134,10 +134,10 @@ const ChessPiece = ({ type, position, color = 'white', isTrayPiece = false, scal
           // we need to check if they're being intentionally discarded
           if (wasFromTray && !onBoard) {
             // Check if the piece is far away from the tray
-            // The tray is at z position 4.5, so if dragged further away it should be removed
-            const distanceFromTray = Math.abs(newZ - 4.5);
+            // The tray is at z position 3, so if dragged further away it should be removed
+            const distanceFromTray = Math.abs(newZ - 3);
             
-            if (distanceFromTray > 2) {
+            if (distanceFromTray > 1.5) {
               // If dragged far from the tray, animate removal
               console.log(`Discarded ${color} ${type} from the tray`)
               

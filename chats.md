@@ -99,3 +99,13 @@ Simplified the chess piece rendering by removing the fallback implementation:
 - Kept the warning logs when model loading fails for debugging purposes
 
 This change streamlines the codebase by removing unused fallback functionality, as the 3D models are now reliably loaded from the preloaded model store.
+
+### 2023-10-XX: Improved Piece Tray Position and Size
+Adjusted the piece tray to enhance usability and aesthetics:
+- Moved the tray closer to the board (distance reduced from 4.5 to 3 units)
+- Reduced the spacing between tray pieces (from 1.0 to 0.8 units)
+- Made the tray platforms smaller (reduced from 0.8×0.8 to 0.6×0.6 units)
+- Updated the piece removal detection logic to match the new tray position
+- Reduced the distance threshold for piece discarding (from 2.0 to 1.5 units)
+
+These adjustments create a more compact and cohesive look, making it easier for users to drag pieces from the tray to the board with less movement required.

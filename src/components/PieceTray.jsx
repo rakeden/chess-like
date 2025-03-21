@@ -29,9 +29,9 @@ const PieceTray = ({ onPieceDragged }) => {
   }, [])
   
   // Position the tray in front of the board
-  const trayBaseZ = 4.5 // Distance in front of the board
+  const trayBaseZ = 3 // Distance in front of the board (reduced from 4.5)
   const trayBaseY = -0.85 // Same Y height as board pieces
-  const spacing = 1 // Spacing between each piece
+  const spacing = 0.8 // Spacing between each piece (reduced from 1)
   
   // Render the tray squares (neutral color)
   const renderTraySquares = () => {
@@ -44,7 +44,7 @@ const PieceTray = ({ onPieceDragged }) => {
           position={[posX, -1 + 0.025, trayBaseZ]}
           receiveShadow
         >
-          <boxGeometry args={[0.8, 0.05, 0.8]} />
+          <boxGeometry args={[0.6, 0.05, 0.6]} /> {/* Reduced from 0.8 to 0.6 */}
           <meshStandardMaterial 
             color="#d0d0d0" 
             metalness={0.1}

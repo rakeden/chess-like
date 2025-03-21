@@ -1,15 +1,12 @@
-import { useRef, useEffect, useState, Suspense } from 'react'
-import { useFrame, useThree } from '@react-three/fiber'
+import { useRef, useEffect, Suspense } from 'react'
+import { useThree } from '@react-three/fiber'
+import { OrbitControls } from '@react-three/drei'
 import * as THREE from 'three'
 import ChessPiece from './ChessPiece'
 
 const Scene = () => {
   const sceneRef = useRef()
-  const { camera, gl } = useThree()
-  
-  // State for orbit controls
-  const [isDragging, setIsDragging] = useState(false)
-  const [previousMousePosition, setPreviousMousePosition] = useState({ x: 0, y: 0 })
+  const { camera } = useThree()
   
   useEffect(() => {
     // Set initial camera position
@@ -17,62 +14,7 @@ const Scene = () => {
     camera.lookAt(0, 0, 0)
     
     console.log("Scene mounted, camera setup complete")
-    
-    // Add mouse event listeners for orbit controls
-    const canvas = gl.domElement
-    
-    const handleMouseDown = (e) => {
-      // Only start orbit drag if not interacting with a piece (right click or shift key)
-      if (e.button === 2 || e.shiftKey) {
-        setIsDragging(true)
-        setPreviousMousePosition({ x: e.clientX, y: e.clientY })
-        e.stopPropagation()
-      }
-    }
-    
-    const handleMouseMove = (e) => {
-      if (isDragging) {
-        const deltaX = e.clientX - previousMousePosition.x
-        const deltaY = e.clientY - previousMousePosition.y
-        
-        // Rotate camera around target
-        const rotationSpeed = 0.005
-        camera.position.x = camera.position.x * Math.cos(deltaX * rotationSpeed) - camera.position.z * Math.sin(deltaX * rotationSpeed)
-        camera.position.z = camera.position.x * Math.sin(deltaX * rotationSpeed) + camera.position.z * Math.cos(deltaX * rotationSpeed)
-        
-        // Limit vertical rotation
-        const newYPosition = camera.position.y + deltaY * rotationSpeed * 5
-        camera.position.y = Math.max(1, Math.min(15, newYPosition))
-        
-        camera.lookAt(0, 0, 0)
-        setPreviousMousePosition({ x: e.clientX, y: e.clientY })
-        e.stopPropagation()
-      }
-    }
-    
-    const handleMouseUp = () => {
-      setIsDragging(false)
-    }
-    
-    // Prevent context menu for right-click orbit controls
-    const handleContextMenu = (e) => {
-      e.preventDefault()
-    }
-    
-    canvas.addEventListener('mousedown', handleMouseDown)
-    canvas.addEventListener('mousemove', handleMouseMove)
-    canvas.addEventListener('mouseup', handleMouseUp)
-    canvas.addEventListener('mouseleave', handleMouseUp)
-    canvas.addEventListener('contextmenu', handleContextMenu)
-    
-    return () => {
-      canvas.removeEventListener('mousedown', handleMouseDown)
-      canvas.removeEventListener('mousemove', handleMouseMove)
-      canvas.removeEventListener('mouseup', handleMouseUp)
-      canvas.removeEventListener('mouseleave', handleMouseUp)
-      canvas.removeEventListener('contextmenu', handleContextMenu)
-    }
-  }, [camera, gl, isDragging, previousMousePosition])
+  }, [camera])
 
   // Generate chessboard squares
   const renderChessboard = () => {
@@ -113,6 +55,16 @@ const Scene = () => {
 
   return (
     <group ref={sceneRef}>
+      <OrbitControls 
+        enablePan={false}
+        enableZoom={true}
+        enableRotate={true}
+        minDistance={3}
+        maxDistance={12}
+        minPolarAngle={Math.PI / 6}
+        maxPolarAngle={Math.PI / 3}
+        target={[0, 0, 1]}
+      />
       <ambientLight intensity={0.3} />
       <spotLight 
         position={[0, 15, 0]} 
@@ -124,7 +76,7 @@ const Scene = () => {
         shadow-mapSize-height={2048}
         shadow-bias={-0.0001}
       />
-      <directionalLight position={[5, 8, 5]} intensity={0.4} castShadow />
+      <directionalLight position={[5, 8, 5]} intensity={0.5} castShadow />
       
       {/* Instructions text */}
       <Suspense fallback={null}>

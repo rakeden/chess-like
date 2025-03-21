@@ -8,9 +8,9 @@ import { useSpring, animated } from '@react-spring/three'
 // Shadow component to show under dragged pieces
 const DragShadow = ({ position, visible, size = 1, isOutOfBounds = false }) => {
   return (
-    <mesh position={[position[0], -0.95, position[2]]} rotation={[-Math.PI / 2, 0, 0]} visible={visible}>
+    <mesh position={[position[0], -0.8, position[2]]} rotation={[-Math.PI / 2, 0, 0]} visible={visible}>
       <circleGeometry args={[size * 0.4, 32]} />
-      <meshBasicMaterial color={isOutOfBounds ? "#ff0000" : "#000000"} transparent opacity={isOutOfBounds ? 0.4 : 0.3} />
+      <meshBasicMaterial color={isOutOfBounds ? "#ff0000" : "#000000"} transparent opacity={isOutOfBounds ? 0.2 : 0.1} />
     </mesh>
   )
 }
@@ -135,7 +135,39 @@ const ChessPiece = ({ type, position, color = 'white' }) => {
       })
       
       if (last) {
-        // When finished dragging, snap to valid positions
+        // When finished dragging, check if piece is out of bounds
+        if (isOutside) {
+          // Create and dispatch a removal event
+          const removalEvent = new CustomEvent('piece-removed', {
+            detail: { 
+              type,
+              color,
+              position: currentPosition
+            }
+          })
+          window.dispatchEvent(removalEvent)
+          
+          // Log the removal
+          console.log(`Removed ${color} ${type} from the board`)
+          
+          // Animate the piece falling off
+          set({
+            position: [
+              currentPosition[0], 
+              currentPosition[1] - 5, // Fall down
+              currentPosition[2]
+            ],
+            rotation: [0, 0, 0],
+            opacity: 0,
+            config: {
+              duration: 500
+            }
+          })
+          
+          return
+        }
+        
+        // If not out of bounds, snap to valid positions on the board
         const snappedX = Math.round(newX)
         const snappedZ = Math.round(newZ)
         

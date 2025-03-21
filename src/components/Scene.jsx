@@ -75,16 +75,47 @@ const Scene = () => {
   // Track if any piece is out of bounds
   const [showBoundary, setShowBoundary] = useState(false)
   
+  // State to track all pieces on the board
+  const [pieces, setPieces] = useState([
+    { id: 'wK', type: "King", position: [0, -0.85 + 0.1, 0], color: "white" },
+    { id: 'wQ', type: "Queen", position: [-1, -0.85 + 0.1, 0], color: "white" },
+    { id: 'wB', type: "Bishop", position: [1, -0.85 + 0.1, 0], color: "white" },
+    { id: 'wN', type: "Knight", position: [-2, -0.85 + 0.1, 0], color: "white" },
+    { id: 'wR', type: "Rook", position: [2, -0.85 + 0.1, 0], color: "white" },
+    { id: 'bK', type: "King", position: [0, -0.85 + 0.1, 2], color: "black" },
+    { id: 'bQ', type: "Queen", position: [0, -0.85 + 0.1, -2], color: "black" },
+    { id: 'bP', type: "Pawn", position: [1, -0.85 + 0.1, -1], color: "black" }
+  ])
+  
   // Create a custom event for pieces going out of bounds
   useEffect(() => {
     const handlePieceOutOfBounds = (e) => {
       setShowBoundary(e.detail.isOutOfBounds)
     }
     
+    // Handle piece removal events
+    const handlePieceRemoved = (e) => {
+      const { type, color, position } = e.detail
+      
+      // Remove the piece from our state
+      setPieces(prevPieces => 
+        prevPieces.filter(piece => 
+          !(piece.type === type && 
+            piece.color === color && 
+            Math.abs(piece.position[0] - position[0]) < 0.1 && 
+            Math.abs(piece.position[2] - position[2]) < 0.1)
+        )
+      )
+      
+      console.log(`Scene: Removed ${color} ${type}`)
+    }
+    
     window.addEventListener('piece-out-of-bounds', handlePieceOutOfBounds)
+    window.addEventListener('piece-removed', handlePieceRemoved)
     
     return () => {
       window.removeEventListener('piece-out-of-bounds', handlePieceOutOfBounds)
+      window.removeEventListener('piece-removed', handlePieceRemoved)
     }
   }, [])
   
@@ -178,19 +209,16 @@ const Scene = () => {
       {/* Chessboard */}
       {renderChessboard()}
       
-      {/* Chess pieces */}
+      {/* Chess pieces - now rendered from state */}
       <Suspense fallback={null}>
-        {/* White pieces */}
-        <ChessPiece type="King" position={[0, -0.85 + 0.1, 0]} color="white" />
-        <ChessPiece type="Queen" position={[-1, -0.85 + 0.1, 0]} color="white" />
-        <ChessPiece type="Bishop" position={[1, -0.85 + 0.1, 0]} color="white" />
-        <ChessPiece type="Knight" position={[-2, -0.85 + 0.1, 0]} color="white" />
-        <ChessPiece type="Rook" position={[2, -0.85 + 0.1, 0]} color="white" />
-        
-        {/* Black pieces */}
-        <ChessPiece type="King" position={[0, -0.85 + 0.1, 2]} color="black" />
-        <ChessPiece type="Queen" position={[0, -0.85 + 0.1, -2]} color="black" />
-        <ChessPiece type="Pawn" position={[1, -0.85 + 0.1, -1]} color="black" />
+        {pieces.map(piece => (
+          <ChessPiece 
+            key={piece.id}
+            type={piece.type} 
+            position={piece.position} 
+            color={piece.color} 
+          />
+        ))}
       </Suspense>
     </group>
   )

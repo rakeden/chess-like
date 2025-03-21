@@ -15,36 +15,6 @@ const DragShadow = ({ position, visible, size = 1, isOutOfBounds = false }) => {
   )
 }
 
-// Create a simple chess piece shape as fallback
-const FallbackPiece = ({ position, color, scale = [1, 1, 1], isOutOfBounds = false, ...props }) => {
-  // Mix the original color with red if out of bounds
-  const pieceColor = isOutOfBounds 
-    ? (color === 'white' ? '#ffcccc' : '#662222') 
-    : (color === 'white' ? '#ffffff' : '#333333')
-    
-  return (
-    <animated.group position={position} scale={scale} {...props}>
-      {/* Base of the piece */}
-      <mesh position={[0, 0.15, 0]} castShadow>
-        <cylinderGeometry args={[0.3, 0.3, 0.1, 16]} />
-        <meshStandardMaterial color={pieceColor} />
-      </mesh>
-      
-      {/* Body of the piece */}
-      <mesh position={[0, 0.5, 0]} castShadow>
-        <cylinderGeometry args={[0.2, 0.3, 0.7, 16]} />
-        <meshStandardMaterial color={pieceColor} />
-      </mesh>
-      
-      {/* Top of the piece */}
-      <mesh position={[0, 0.9, 0]} castShadow>
-        <sphereGeometry args={[0.25, 16, 16]} />
-        <meshStandardMaterial color={pieceColor} />
-      </mesh>
-    </animated.group>
-  )
-}
-
 const ChessPiece = ({ type, position, color = 'white', isTrayPiece = false, scale = 1 }) => {
   const modelRef = useRef()
   const [processedScene, setProcessedScene] = useState(null)
@@ -384,14 +354,7 @@ const ChessPiece = ({ type, position, color = 'white', isTrayPiece = false, scal
           />
           
           {/* Actual chess piece */}
-          {loadError || !processedScene ? (
-            <FallbackPiece 
-              {...spring} 
-              {...bind()} 
-              color={color} 
-              isOutOfBounds={isOutOfBounds}
-            />
-          ) : (
+          {processedScene && (
             <animated.group ref={modelRef} {...spring} {...bind()}>
               <primitive object={processedScene} dispose={null} />
             </animated.group>

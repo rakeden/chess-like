@@ -89,3 +89,13 @@ Improved the piece tray functionality to allow direct removal of pieces:
 - Added console logging for tray piece discard actions
 
 This enhancement provides a more intuitive user experience by allowing unwanted pieces to be discarded directly from the tray.
+
+### 2023-10-XX: Removed FallbackPiece Component
+Simplified the chess piece rendering by removing the fallback implementation:
+- Removed the entire `FallbackPiece` component that was used as a substitute when 3D models failed to load
+- Modified the rendering logic to only show pieces when their 3D models are properly loaded
+- Simplified the conditional rendering in the return statement
+- Removed references to the `loadError` state in the rendering process
+- Kept the warning logs when model loading fails for debugging purposes
+
+This change streamlines the codebase by removing unused fallback functionality, as the 3D models are now reliably loaded from the preloaded model store.

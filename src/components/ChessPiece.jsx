@@ -15,7 +15,7 @@ const DragShadow = ({ position, visible, size = 1, isOutOfBounds = false }) => {
   )
 }
 
-const ChessPiece = ({ type, position, color = 'white', isTrayPiece = false, scale = 1 }) => {
+const ChessPiece = ({ type, position, color = 'white', isTrayPiece = false, scale = 1, entryDelay = 0 }) => {
   const modelRef = useRef()
   const [processedScene, setProcessedScene] = useState(null)
   const [loadError, setLoadError] = useState(false)
@@ -42,6 +42,9 @@ const ChessPiece = ({ type, position, color = 'white', isTrayPiece = false, scal
   
   // Track if this tray piece should be hidden (after placement on board)
   const [hideOriginal, setHideOriginal] = useState(false)
+  
+  // Track if the appearance animation has completed
+  const [hasAppeared, setHasAppeared] = useState(false)
   
   // Calculate the scale factor based on tray piece status
   const getScaleFactor = () => {
@@ -70,8 +73,9 @@ const ChessPiece = ({ type, position, color = 'white', isTrayPiece = false, scal
   // Setup spring for animations
   const [spring, set] = useSpring(() => ({ 
     position: initialPosition, 
-    scale: [13 * getScaleFactor(), 13 * getScaleFactor(), 13 * getScaleFactor()],
+    scale: wasFromTray ? [13 * getScaleFactor(), 13 * getScaleFactor(), 13 * getScaleFactor()] : [6, 6, 6], 
     rotation: [0, 0, 0],
+    opacity: 0,
     config: { 
       friction: 10,
       tension: 300
@@ -340,6 +344,67 @@ const ChessPiece = ({ type, position, color = 'white', isTrayPiece = false, scal
     
     setProcessedScene(coloredModel)
   }, [type, color])
+  
+  // Animate the piece appearance when it first loads
+  useEffect(() => {
+    if (processedScene) {
+      // Add a slight randomness to stagger appearances (reduced by half)
+      const randomDelay = Math.random() * 50; // Reduced from 100ms
+      const totalDelay = entryDelay / 2 + randomDelay; // Cut delay in half
+      
+      if (wasFromTray) {
+        // For tray pieces - more subtle and faster animation
+        setTimeout(() => {
+          set({
+            scale: [13 * scale, 13 * scale, 13 * scale],
+            position: [initialPosition[0], initialPosition[1] + 0.1, initialPosition[2]],
+            opacity: 1,
+            config: {
+              friction: 12, // Lower friction for faster movement
+              tension: 180, // Higher tension for faster acceleration
+              mass: 0.8 // Lower mass for quicker response
+            }
+          });
+          
+          // Settle to final position (half the time)
+          setTimeout(() => {
+            set({
+              position: initialPosition,
+              config: {
+                friction: 10,
+                tension: 150
+              }
+            });
+          }, 75); // Reduced from 150ms
+        }, totalDelay);
+      } else {
+        // For board pieces - faster animation
+        setTimeout(() => {
+          set({
+            scale: [13, 13, 13],
+            position: [initialPosition[0], initialPosition[1] + 0.15, initialPosition[2]],
+            opacity: 1,
+            config: {
+              friction: 14, // Lower friction for faster movement
+              tension: 210, // Higher tension for faster acceleration
+              mass: 1.0 // Lower mass for quicker response
+            }
+          });
+          
+          // After piece rises, settle it down to final position (half the time)
+          setTimeout(() => {
+            set({
+              position: initialPosition,
+              config: {
+                friction: 10,
+                tension: 160
+              }
+            });
+          }, 100); // Reduced from 200ms
+        }, totalDelay);
+      }
+    }
+  }, [processedScene]);
   
   return (
     <>

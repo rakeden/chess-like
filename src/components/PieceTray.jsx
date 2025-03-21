@@ -55,13 +55,16 @@ const PieceTray = ({ onPieceDragged }) => {
     })
   }
   
-  // Render the tray pieces
+  // Render the tray pieces with staggered appearance
   const renderTrayPieces = () => {
     return trayPieces.map((piece, index) => {
       const posX = (index - 2) * spacing // Center the tray
       
       // Create a unique key that changes when a piece is placed
       const pieceKey = `${piece.id}-${refreshCounter}-${index}`
+      
+      // Add a staggered appearance by setting a different initial position for each piece
+      const entryDelay = index * 40; // Reduced from 80ms for twice as fast animation
       
       return (
         <ChessPiece 
@@ -72,6 +75,7 @@ const PieceTray = ({ onPieceDragged }) => {
           color={piece.color}
           isTrayPiece={true}
           scale={0.5} // Half the normal size
+          entryDelay={entryDelay} // Pass delay to stagger appearances
         />
       )
     })

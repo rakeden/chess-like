@@ -109,3 +109,51 @@ Adjusted the piece tray to enhance usability and aesthetics:
 - Reduced the distance threshold for piece discarding (from 2.0 to 1.5 units)
 
 These adjustments create a more compact and cohesive look, making it easier for users to drag pieces from the tray to the board with less movement required.
+
+### 2023-10-XX: Added Piece Appearance Animation
+Implemented animated entrance effects for chess pieces when they first appear:
+- Created different animations for board pieces and tray pieces
+- Board pieces fade in, scale up from zero, and rise before settling to final position
+- Tray pieces rise slightly and then settle to their position
+- Added staggered timing so pieces appear in sequence rather than all at once
+- Used setTimeout with random delay factors for natural-looking staggered animation
+- Implemented smoother animation with custom spring physics (friction, tension, mass)
+- Configured tray pieces to appear in left-to-right order with 150ms delay between each
+
+Technical implementation:
+- Modified the useSpring configuration to start with zero scale and opacity for board pieces
+- Added entryDelay prop to ChessPiece component for controlled timing
+- Enhanced PieceTray component to pass incremental delays to each piece
+- Used a two-phase animation: first rising/scaling, then settling to final position
+- Set different animation parameters for tray pieces vs. board pieces
+
+This enhancement adds visual polish to the application and provides better feedback when the board is initially set up or when pieces are added.
+
+### 2023-10-XX: Refined Piece Appearance Animation
+Made the piece appearance animation more subtle and professional:
+- Reduced vertical movement during appearance animation (from 0.3 to 0.15 units for board pieces)
+- Reduced vertical movement for tray pieces (from 0.2 to 0.1 units)
+- Decreased the delay between tray pieces (from 150ms to 80ms) for a smoother sequence
+- Shortened the animation duration for a crisper, more responsive feel
+- Adjusted physics parameters for more natural motion:
+  - Increased friction values to reduce oscillation
+  - Lowered tension values for gentler acceleration
+  - Added mass parameters to improve stability
+  - Reduced random delay factors for more consistent timing
+
+These refinements create a more polished, subtle appearance effect that maintains visual feedback without being distracting. The pieces now appear with a gentle, professional animation that enhances the user experience while being less obtrusive.
+
+### 2023-10-XX: Accelerated Piece Appearance Animation
+Doubled the speed of the piece appearance animation for a snappier, more responsive feel:
+- Cut all animation timings in half:
+  - Reduced settling time from 150ms to 75ms for tray pieces
+  - Reduced settling time from 200ms to 100ms for board pieces
+  - Decreased staggered delay between tray pieces from 80ms to 40ms
+  - Reduced random delay component from 100ms to 50ms
+- Modified spring physics for faster movement:
+  - Lowered friction values (from 18→12 for tray pieces, 20→14 for board pieces)
+  - Increased tension values (from 120→180 for tray pieces, 140→210 for board pieces)
+  - Reduced mass parameters (from 1.2→0.8 for tray pieces, 1.7→1.0 for board pieces)
+- Maintained the same visual effect but with twice the speed
+
+These changes result in a more immediate visual response when the game starts or when new pieces are added to the board, creating a snappier, more responsive feel while preserving the polished appearance effect.

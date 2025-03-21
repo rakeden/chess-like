@@ -70,22 +70,6 @@ const BoardBoundary = ({ visible, boardSize }) => {
   )
 }
 
-// Physical plane component that serves as the ground
-const PhysicalGround = (props) => {
-  const [ref] = usePlane(() => ({ 
-    rotation: [-Math.PI / 2, 0, 0], 
-    position: [0, -3.5, 0],
-    ...props
-  }))
-  
-  return (
-    <mesh ref={ref} receiveShadow>
-      <planeGeometry args={[50, 50]} />
-      <meshStandardMaterial color="#909090" roughness={0.8} metalness={0.2} />
-    </mesh>
-  )
-}
-
 // Physical chess square component
 const PhysicalChessSquare = ({ position, color, size, height }) => {
   const [ref] = useBox(() => ({
@@ -261,8 +245,6 @@ const Scene = () => {
           restitution: 0.3
         }}
       >
-        {/* Physical ground plane */}
-        <PhysicalGround />
         
         {/* Physical chessboard squares */}
         {renderChessboard()}

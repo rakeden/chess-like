@@ -191,15 +191,3 @@ Enhanced the physics implementation by replacing the wooden board base with indi
   - Support more complex physics behavior in the future
 
 This refactoring improves the physical fidelity of the chessboard and provides a more accurate foundation for piece-board interactions. By making each square a separate physical entity, we enable more realistic gameplay mechanics and prepare for future enhancements like board manipulation or custom game modes.
-
-### 2023-10-XX: Adjusted Physical Ground Position
-Modified the position of the physical ground plane to improve the physics simulation:
-- Lowered the ground plane from -1.5 units to -3.5 units on the y-axis (2 units lower)
-- This adjustment creates more space for pieces to fall when removed from the board
-- The increased falling distance allows for:
-  - More dramatic falling animations
-  - Better visual feedback when pieces are discarded
-  - More time for physics-based rotations and movements to develop
-  - Clearer distinction between the playable area and the "discard zone"
-
-This change enhances the visual experience of piece removal while maintaining the same gameplay mechanics. The additional space beneath the board allows for more elaborate physics interactions without affecting the core gameplay on the board surface.

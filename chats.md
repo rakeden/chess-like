@@ -52,3 +52,18 @@ Fixed an issue where the drag shadow would remain visible when a piece was remov
 - Added an `isRemoved` state variable to track when pieces are removed
 - Updated the `DragShadow` component to hide when a piece is removed
 - This ensures that no visual artifacts remain after a piece is removed from the board
+
+### 2023-10-XX: Incorporated Physics-Based Falling Animation
+Enhanced the chess piece removal animation with realistic physics using @react-three/cannon:
+- Added Physics, useBox, and usePlane components for realistic physical interactions
+- Created a PhysicalChessPiece component that responds to gravity and collisions
+- Implemented a PhysicsFloor component for pieces to bounce on when falling
+- Added randomized initial impulses for varied falling trajectories
+- Pieces now:
+  - Fall with realistic physics and gravity
+  - Bounce when colliding with surfaces
+  - Rotate realistically during fall
+  - Gradually fade out and scale down after physics simulation
+  - Have slight random variations in trajectory for natural movement
+
+The physics-based approach creates a much more realistic and satisfying removal animation compared to the previous tween-based approach, giving better feedback to the user when pieces are dragged out of bounds.

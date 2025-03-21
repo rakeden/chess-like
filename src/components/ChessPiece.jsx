@@ -4,6 +4,7 @@ import { useThree } from '@react-three/fiber'
 import { getModel, createColoredModel } from '../models'
 import { useGesture } from 'react-use-gesture'
 import { useSpring, animated } from '@react-spring/three'
+import { Physics, useBox, usePlane } from '@react-three/cannon'
 
 // Shadow component to show under dragged pieces
 const DragShadow = ({ position, visible, size = 1, isOutOfBounds = false }) => {
@@ -12,6 +13,114 @@ const DragShadow = ({ position, visible, size = 1, isOutOfBounds = false }) => {
       <circleGeometry args={[size * 0.4, 32]} />
       <meshBasicMaterial color={isOutOfBounds ? "#ff0000" : "#000000"} transparent opacity={isOutOfBounds ? 0.2 : 0.1} />
     </mesh>
+  )
+}
+
+// Physics-based chess piece for realistic falling animation
+const PhysicalChessPiece = ({ position, color, type, onAnimationComplete }) => {
+  const [ref, api] = useBox(() => ({
+    mass: 1,
+    position: [position[0], position[1], position[2]],
+    rotation: [Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI],
+    args: [0.5, 0.5, 0.5], // Rough collision box size
+    allowSleep: false,
+    linearDamping: 0.1,
+    angularDamping: 0.1,
+    onCollide: (e) => {
+      // Add bounce effect on collision
+      const impulse = 0.2 * Math.random();
+      api.applyImpulse([impulse * (Math.random() - 0.5), impulse, impulse * (Math.random() - 0.5)], [0, 0, 0]);
+    }
+  }))
+  
+  // Get model for this piece
+  const [processedScene, setProcessedScene] = useState(null)
+  const [loadError, setLoadError] = useState(false)
+  const [opacity, setOpacity] = useState(1)
+  const [scale, setScale] = useState(13)
+  
+  // Apply initial impulse when created
+  useEffect(() => {
+    // Random horizontal velocity
+    const vx = (Math.random() - 0.5) * 2
+    const vy = -2 - Math.random() * 3 // Downward with some randomness
+    const vz = (Math.random() - 0.5) * 2
+    
+    // Apply the impulse
+    api.applyImpulse([vx, vy, vz], [0, 0, 0])
+    
+    // Set a timeout to fade out the piece
+    const timeout = setTimeout(() => {
+      const fadeInterval = setInterval(() => {
+        setOpacity((prev) => {
+          const newOpacity = prev - 0.05
+          if (newOpacity <= 0) {
+            clearInterval(fadeInterval)
+            // Notify parent component that animation is complete
+            if (onAnimationComplete) setTimeout(onAnimationComplete, 500)
+            return 0
+          }
+          return newOpacity
+        })
+        
+        setScale((prev) => prev * 0.95)
+      }, 50)
+    }, 1000) // Start fading after 1 second of physics simulation
+    
+    return () => {
+      clearTimeout(timeout)
+    }
+  }, [api, onAnimationComplete])
+  
+  // Load the piece model
+  useEffect(() => {
+    // Try to get the preloaded model
+    const model = getModel(type.toLowerCase())
+    
+    if (!model) {
+      setLoadError(true)
+      return
+    }
+    
+    // Create a colored version of the model
+    const coloredModel = createColoredModel(model, color)
+    
+    if (!coloredModel) {
+      setLoadError(true)
+      return
+    }
+    
+    // Add shadow casting to all meshes
+    coloredModel.traverse((node) => {
+      if (node.isMesh) {
+        node.castShadow = true
+      }
+    })
+    
+    setProcessedScene(coloredModel)
+  }, [type, color])
+
+  // Fall back to simple piece if model fails to load
+  if (loadError || !processedScene) {
+    return (
+      <mesh ref={ref}>
+        <boxGeometry args={[0.5, 0.5, 0.5]} />
+        <meshStandardMaterial color={color === 'white' ? '#ffffff' : '#333333'} transparent opacity={opacity} />
+      </mesh>
+    )
+  }
+
+  return (
+    <group ref={ref} scale={[scale, scale, scale]}>
+      <primitive object={processedScene} dispose={null} />
+      {/* Apply opacity effect to all meshes */}
+      {processedScene && opacity < 1 && processedScene.traverse((node) => {
+        if (node.isMesh && node.material) {
+          node.material.transparent = true
+          node.material.opacity = opacity
+        }
+      })}
+    </group>
   )
 }
 
@@ -45,6 +154,23 @@ const FallbackPiece = ({ position, color, scale = [1, 1, 1], isOutOfBounds = fal
   )
 }
 
+// Invisible floor for physics collisions
+const PhysicsFloor = () => {
+  // Create an invisible plane for the floor
+  const [ref] = usePlane(() => ({ 
+    rotation: [-Math.PI / 2, 0, 0], // flat on the ground
+    position: [0, -20, 0], // far below the board
+    type: 'Static'
+  }))
+  
+  return (
+    <mesh ref={ref} visible={false}>
+      <planeGeometry args={[100, 100]} />
+      <meshBasicMaterial transparent opacity={0} />
+    </mesh>
+  )
+}
+
 const ChessPiece = ({ type, position, color = 'white' }) => {
   const modelRef = useRef()
   const [processedScene, setProcessedScene] = useState(null)
@@ -63,6 +189,9 @@ const ChessPiece = ({ type, position, color = 'white' }) => {
   
   // Track if piece has been removed from the board
   const [isRemoved, setIsRemoved] = useState(false)
+  
+  // Track if we should show physics-based falling
+  const [showPhysicsFall, setShowPhysicsFall] = useState(false)
   
   // Effect to dispatch custom event when out of bounds state changes
   useEffect(() => {
@@ -153,21 +282,8 @@ const ChessPiece = ({ type, position, color = 'white' }) => {
           // Log the removal
           console.log(`Removed ${color} ${type} from the board`)
           
-          // Animate the piece falling off with acceleration and fading
-          set({
-            position: [
-              currentPosition[0] + (Math.random() * 0.5 - 0.25), // Add slight x randomness for realism
-              currentPosition[1] - 10, // Fall further for acceleration effect
-              currentPosition[2] + (Math.random() * 0.5 - 0.25) // Add slight z randomness
-            ],
-            rotation: [Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI], // Random rotation as it falls
-            scale: [0, 0, 0], // Scale to zero for disappearing effect
-            config: {
-              duration: 800,
-              easing: t => t * t // Quadratic easing for acceleration effect
-            }
-          })
-          
+          // Use physics-based falling instead of spring animation
+          setShowPhysicsFall(true)
           setIsRemoved(true)
           return
         }
@@ -282,18 +398,36 @@ const ChessPiece = ({ type, position, color = 'white' }) => {
         isOutOfBounds={isOutOfBounds}
       />
       
-      {/* Actual chess piece */}
-      {loadError || !processedScene ? (
-        <FallbackPiece 
-          {...spring} 
-          {...bind()} 
-          color={color} 
-          isOutOfBounds={isOutOfBounds}
-        />
-      ) : (
-        <animated.group ref={modelRef} {...spring} {...bind()}>
-          <primitive object={processedScene} dispose={null} />
-        </animated.group>
+      {/* Physics-based falling piece when removed */}
+      {showPhysicsFall && (
+        <Physics gravity={[0, -30, 0]} defaultContactMaterial={{ restitution: 0.3 }}>
+          <PhysicsFloor />
+          <PhysicalChessPiece 
+            position={currentPosition} 
+            color={color} 
+            type={type} 
+            onAnimationComplete={() => {
+              // Fully remove the piece from rendering after animation completes
+              setShowPhysicsFall(false)
+            }}
+          />
+        </Physics>
+      )}
+      
+      {/* Actual chess piece - only shown when not removed */}
+      {!showPhysicsFall && (
+        loadError || !processedScene ? (
+          <FallbackPiece 
+            {...spring} 
+            {...bind()} 
+            color={color} 
+            isOutOfBounds={isOutOfBounds}
+          />
+        ) : (
+          <animated.group ref={modelRef} {...spring} {...bind()}>
+            <primitive object={processedScene} dispose={null} />
+          </animated.group>
+        )
       )}
     </>
   )

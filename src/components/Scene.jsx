@@ -5,6 +5,48 @@ import * as THREE from 'three'
 import { useSpring, animated } from '@react-spring/three'
 import ChessPiece from './ChessPiece'
 
+// Component for the piece selection area with neutral squares
+const PieceSelectionArea = () => {
+  const pieceTypes = ["Pawn", "Knight", "Bishop", "Rook", "Queen"]
+  const squareSize = 1.0
+  const squareHeight = 0.05
+  const boardElevation = 0.1
+  
+  return (
+    <group position={[0, 0, 4]}>
+      {/* Render the 5 neutral squares */}
+      {pieceTypes.map((type, index) => {
+        const posX = (index - 2) * squareSize * 1.2 // Spacing them out a bit
+        
+        return (
+          <group key={`selection-${index}`}>
+            {/* Neutral square */}
+            <mesh 
+              position={[posX, -1 + squareHeight/2 + boardElevation, 0]}
+              receiveShadow
+            >
+              <boxGeometry args={[squareSize, squareHeight, squareSize]} />
+              <meshStandardMaterial 
+                color='#d8d8d8'
+                metalness={0.1}
+                roughness={0.5}
+              />
+            </mesh>
+            
+            {/* Chess piece on the square */}
+            <ChessPiece 
+              key={`selection-${type}`}
+              type={type}
+              position={[posX, -0.85 + 0.1, 0]} 
+              color="white"
+            />
+          </group>
+        )
+      })}
+    </group>
+  )
+}
+
 // Custom component for the board boundary glow effect
 const BoardBoundary = ({ visible, boardSize }) => {
   const boundaryRef = useRef()
@@ -219,6 +261,11 @@ const Scene = () => {
             color={piece.color} 
           />
         ))}
+      </Suspense>
+      
+      {/* Piece selection area */}
+      <Suspense fallback={null}>
+        <PieceSelectionArea />
       </Suspense>
     </group>
   )

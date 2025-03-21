@@ -150,17 +150,18 @@ const ChessPiece = ({ type, position, color = 'white' }) => {
           // Log the removal
           console.log(`Removed ${color} ${type} from the board`)
           
-          // Animate the piece falling off
+          // Animate the piece falling off with acceleration and fading
           set({
             position: [
-              currentPosition[0], 
-              currentPosition[1] - 5, // Fall down
-              currentPosition[2]
+              currentPosition[0] + (Math.random() * 0.5 - 0.25), // Add slight x randomness for realism
+              currentPosition[1] - 10, // Fall further for acceleration effect
+              currentPosition[2] + (Math.random() * 0.5 - 0.25) // Add slight z randomness
             ],
-            rotation: [0, 0, 0],
-            opacity: 0,
+            rotation: [Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI], // Random rotation as it falls
+            scale: [0, 0, 0], // Scale to zero for disappearing effect
             config: {
-              duration: 500
+              duration: 800,
+              easing: t => t * t // Quadratic easing for acceleration effect
             }
           })
           

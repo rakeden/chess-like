@@ -4,48 +4,7 @@ import { OrbitControls } from '@react-three/drei'
 import * as THREE from 'three'
 import { useSpring, animated } from '@react-spring/three'
 import ChessPiece from './ChessPiece'
-
-// Component for the piece selection area with neutral squares
-const PieceSelectionArea = () => {
-  const pieceTypes = ["Pawn", "Knight", "Bishop", "Rook", "Queen"]
-  const squareSize = 1.0
-  const squareHeight = 0.05
-  const boardElevation = 0.1
-  
-  return (
-    <group position={[0, 0, 4]}>
-      {/* Render the 5 neutral squares */}
-      {pieceTypes.map((type, index) => {
-        const posX = (index - 2) * squareSize * 1.2 // Spacing them out a bit
-        
-        return (
-          <group key={`selection-${index}`}>
-            {/* Neutral square */}
-            <mesh 
-              position={[posX, -1 + squareHeight/2 + boardElevation, 0]}
-              receiveShadow
-            >
-              <boxGeometry args={[squareSize, squareHeight, squareSize]} />
-              <meshStandardMaterial 
-                color='#d8d8d8'
-                metalness={0.1}
-                roughness={0.5}
-              />
-            </mesh>
-            
-            {/* Chess piece on the square */}
-            <ChessPiece 
-              key={`selection-${type}`}
-              type={type}
-              position={[posX, -0.85 + 0.1, 0]} 
-              color="white"
-            />
-          </group>
-        )
-      })}
-    </group>
-  )
-}
+import PieceTray from './PieceTray'
 
 // Custom component for the board boundary glow effect
 const BoardBoundary = ({ visible, boardSize }) => {
@@ -152,12 +111,27 @@ const Scene = () => {
       console.log(`Scene: Removed ${color} ${type}`)
     }
     
+    // Handle tray piece placement
+    const handleTrayPiecePlaced = (e) => {
+      const { id, type, color, position } = e.detail
+      
+      // Add the new piece to the board
+      setPieces(prevPieces => [
+        ...prevPieces,
+        { id, type, color, position }
+      ])
+      
+      console.log(`Scene: Added ${color} ${type} from tray`)
+    }
+    
     window.addEventListener('piece-out-of-bounds', handlePieceOutOfBounds)
     window.addEventListener('piece-removed', handlePieceRemoved)
+    window.addEventListener('tray-piece-placed', handleTrayPiecePlaced)
     
     return () => {
       window.removeEventListener('piece-out-of-bounds', handlePieceOutOfBounds)
       window.removeEventListener('piece-removed', handlePieceRemoved)
+      window.removeEventListener('tray-piece-placed', handleTrayPiecePlaced)
     }
   }, [])
   
@@ -263,10 +237,8 @@ const Scene = () => {
         ))}
       </Suspense>
       
-      {/* Piece selection area */}
-      <Suspense fallback={null}>
-        <PieceSelectionArea />
-      </Suspense>
+      {/* Piece Tray */}
+      <PieceTray />
     </group>
   )
 }

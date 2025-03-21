@@ -45,7 +45,7 @@ const FallbackPiece = ({ position, color, scale = [1, 1, 1], isOutOfBounds = fal
   )
 }
 
-const ChessPiece = ({ type, position, color = 'white' }) => {
+const ChessPiece = ({ type, position, color = 'white', isTrayPiece = false, scale = 1 }) => {
   const modelRef = useRef()
   const [processedScene, setProcessedScene] = useState(null)
   const [loadError, setLoadError] = useState(false)
@@ -64,6 +64,26 @@ const ChessPiece = ({ type, position, color = 'white' }) => {
   // Track if piece has been removed from the board
   const [isRemoved, setIsRemoved] = useState(false)
   
+  // Track if this piece was originally from the tray
+  const [wasFromTray, setWasFromTray] = useState(isTrayPiece)
+  
+  // Track if the piece has been placed on the board from the tray
+  const [onBoard, setOnBoard] = useState(!isTrayPiece)
+  
+  // Track if this tray piece should be hidden (after placement on board)
+  const [hideOriginal, setHideOriginal] = useState(false)
+  
+  // Calculate the scale factor based on tray piece status
+  const getScaleFactor = () => {
+    if (wasFromTray && onBoard) {
+      return 1 // Full size when on board
+    } else if (wasFromTray && !onBoard) {
+      return scale // Original reduced scale when in tray
+    } else {
+      return 1 // Regular pieces are always full size
+    }
+  }
+  
   // Effect to dispatch custom event when out of bounds state changes
   useEffect(() => {
     // Create and dispatch a custom event when the out of bounds state changes
@@ -80,7 +100,7 @@ const ChessPiece = ({ type, position, color = 'white' }) => {
   // Setup spring for animations
   const [spring, set] = useSpring(() => ({ 
     position: initialPosition, 
-    scale: [13,13,13],
+    scale: [13 * getScaleFactor(), 13 * getScaleFactor(), 13 * getScaleFactor()],
     rotation: [0, 0, 0],
     config: { 
       friction: 10,
@@ -140,6 +160,52 @@ const ChessPiece = ({ type, position, color = 'white' }) => {
       if (last) {
         // When finished dragging, check if piece is out of bounds
         if (isOutside) {
+          // For tray pieces that haven't been placed on the board yet,
+          // we need to check if they're being intentionally discarded
+          if (wasFromTray && !onBoard) {
+            // Check if the piece is far away from the tray
+            // The tray is at z position 4.5, so if dragged further away it should be removed
+            const distanceFromTray = Math.abs(newZ - 4.5);
+            
+            if (distanceFromTray > 2) {
+              // If dragged far from the tray, animate removal
+              console.log(`Discarded ${color} ${type} from the tray`)
+              
+              // Animate the piece falling off with acceleration and fading
+              set({
+                position: [
+                  currentPosition[0] + (Math.random() * 0.5 - 0.25),
+                  currentPosition[1] - 10,
+                  currentPosition[2] + (Math.random() * 0.5 - 0.25)
+                ],
+                rotation: [Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI],
+                scale: [0, 0, 0],
+                config: {
+                  duration: 800,
+                  easing: t => t * t
+                }
+              })
+              
+              setHideOriginal(true)
+              setIsRemoved(true)
+              return
+            }
+            
+            // Otherwise, just return it to its original position
+            set({
+              position: initialPosition,
+              rotation: [0, 0, 0],
+              config: {
+                tension: 200,
+                friction: 20
+              }
+            })
+            setCurrentPosition(initialPosition)
+            setIsOutOfBounds(false)
+            setIsDragging(false)
+            return
+          }
+          
           // Create and dispatch a removal event
           const removalEvent = new CustomEvent('piece-removed', {
             detail: { 
@@ -183,11 +249,40 @@ const ChessPiece = ({ type, position, color = 'white' }) => {
         // Update the current position to the snapped position
         setCurrentPosition([boundedX, currentPosition[1], boundedZ])
         
-        // Animate to snapped position
-        set({ 
-          position: [boundedX, currentPosition[1], boundedZ],
-          rotation: [0, 0, 0]
-        })
+        // Check if this is a tray piece being placed on the board
+        const isOnBoard = Math.abs(boundedZ) <= halfBoardSize - 0.5;
+        
+        if (wasFromTray && !onBoard && isOnBoard) {
+          // This is a tray piece being placed on the board for the first time
+          setOnBoard(true)
+          
+          // Dispatch an event to notify the placement
+          const placementEvent = new CustomEvent('tray-piece-placed', {
+            detail: { 
+              id: type + "-" + Date.now(), // Generate a unique ID
+              type,
+              color,
+              position: [boundedX, currentPosition[1], boundedZ]
+            }
+          })
+          window.dispatchEvent(placementEvent)
+          
+          // Hide the original tray piece
+          setHideOriginal(true)
+          
+          // Animate to snapped position with full size
+          set({ 
+            position: [boundedX, currentPosition[1], boundedZ],
+            rotation: [0, 0, 0],
+            scale: [13, 13, 13] // Full size
+          })
+        } else {
+          // Normal piece movement
+          set({ 
+            position: [boundedX, currentPosition[1], boundedZ],
+            rotation: [0, 0, 0]
+          })
+        }
         
         setIsDragging(false)
         setIsOutOfBounds(false)
@@ -198,8 +293,11 @@ const ChessPiece = ({ type, position, color = 'white' }) => {
     },
     onHover: ({ hovering }) => {
       if (!isDragging) {
+        const baseScale = 13 * getScaleFactor();
+        const hoverScale = baseScale * 1.03; // 3% larger on hover
+        
         set({ 
-          scale: hovering ? [13.3,13.3,13.3] : [13,13,13],
+          scale: hovering ? [hoverScale, hoverScale, hoverScale] : [baseScale, baseScale, baseScale],
           position: [
             currentPosition[0], 
             hovering ? currentPosition[1] + 0.1 : currentPosition[1], 
@@ -275,25 +373,30 @@ const ChessPiece = ({ type, position, color = 'white' }) => {
   
   return (
     <>
-      {/* Drag shadow underneath */}
-      <DragShadow 
-        position={currentPosition} 
-        visible={isDragging && !isRemoved} 
-        isOutOfBounds={isOutOfBounds}
-      />
-      
-      {/* Actual chess piece */}
-      {loadError || !processedScene ? (
-        <FallbackPiece 
-          {...spring} 
-          {...bind()} 
-          color={color} 
-          isOutOfBounds={isOutOfBounds}
-        />
-      ) : (
-        <animated.group ref={modelRef} {...spring} {...bind()}>
-          <primitive object={processedScene} dispose={null} />
-        </animated.group>
+      {/* Don't render anything if this is a hidden original tray piece */}
+      {!hideOriginal && (
+        <>
+          {/* Drag shadow underneath */}
+          <DragShadow 
+            position={currentPosition} 
+            visible={isDragging && !isRemoved} 
+            isOutOfBounds={isOutOfBounds}
+          />
+          
+          {/* Actual chess piece */}
+          {loadError || !processedScene ? (
+            <FallbackPiece 
+              {...spring} 
+              {...bind()} 
+              color={color} 
+              isOutOfBounds={isOutOfBounds}
+            />
+          ) : (
+            <animated.group ref={modelRef} {...spring} {...bind()}>
+              <primitive object={processedScene} dispose={null} />
+            </animated.group>
+          )}
+        </>
       )}
     </>
   )

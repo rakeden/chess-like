@@ -53,11 +53,39 @@ Fixed an issue where the drag shadow would remain visible when a piece was remov
 - Updated the `DragShadow` component to hide when a piece is removed
 - This ensures that no visual artifacts remain after a piece is removed from the board
 
-### 2023-10-XX: Added Piece Selection Area
-Implemented a piece selection area in front of the chessboard:
-- Created a new `PieceSelectionArea` component that displays five neutral squares
-- Added one chess piece on each square (Pawn, Knight, Bishop, Rook, and Queen)
-- Positioned the selection area in front of the main chessboard
-- Used neutral light gray color (#d8d8d8) for the selection squares to visually distinguish them from the main board
-- Pieces can be dragged from this area onto the main board
-- Maintains consistent spacing and styling with the main chessboard
+### 2023-10-XX: Added Piece Tray Feature
+Implemented a piece tray in front of the chessboard:
+- Created a `PieceTray` component that displays 5 neutral squares with chess pieces
+- Added white pawn, knight, bishop, rook, and queen pieces to the tray
+- Tray pieces are rendered at half the size of regular board pieces
+- When dragged onto the board, tray pieces grow to full size
+- Added custom event handling to manage piece transitions
+- Pieces can be repeatedly dragged from the tray to create multiple instances
+
+Implementation details:
+- New `PieceTray` component with neutral colored squares
+- Added `isTrayPiece` and `scale` properties to the `ChessPiece` component
+- Enhanced drag and drop behavior to detect when pieces move from tray to board
+- Added animation for size transition using React Spring
+- Used custom event 'tray-piece-placed' to notify the Scene when new pieces are added
+
+### 2023-10-XX: Fixed Duplicate Piece Rendering Bug
+Fixed an issue where pieces from the tray were being rendered twice when placed on the board:
+- Added a `hideOriginal` state variable to hide the original tray piece after placement
+- Added a refresh mechanism in the `PieceTray` component to create new pieces
+- Used a counter in the tray to generate unique keys for each new piece
+- Implemented conditional rendering to prevent visual duplication
+- Original tray pieces are now hidden while their copies are added to the board as new pieces
+
+This ensures a clean user experience with no visual artifacts when dragging pieces from the tray to the board.
+
+### 2023-10-XX: Enhanced Tray Piece Removal
+Improved the piece tray functionality to allow direct removal of pieces:
+- Added the ability to discard pieces from the tray without first placing them on the board
+- Implemented distance-based logic to detect intentional discarding vs accidental out-of-bounds
+- Pieces dragged far enough from the tray (distance > 2 units) are treated as discarded
+- Used the same falling and disappearing animation as regular piece removal
+- Pieces dragged slightly out of bounds will return to their original tray position
+- Added console logging for tray piece discard actions
+
+This enhancement provides a more intuitive user experience by allowing unwanted pieces to be discarded directly from the tray.

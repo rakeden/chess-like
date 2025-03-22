@@ -99,13 +99,20 @@ export const createColoredModel = (model, color) => {
     const clonedScene = model.scene.clone()
     
     // Apply material color
-    const materialColor = color === 'white' ? '#ffffff' : '#333333'
+    const materialColor = color === 'white' ? '#f0f0e0' : '#333333'
     clonedScene.traverse((node) => {
       if (node.isMesh && node.material) {
         // Handle single material
         if (!Array.isArray(node.material)) {
           node.material = node.material.clone()
           node.material.color = new THREE.Color(materialColor)
+          
+          // Enhance white pieces with better material properties
+          if (color === 'white') {
+            node.material.roughness = 0.3;  // Lower roughness for more shine
+            node.material.metalness = 0.1;  // Slight metalness for better visibility
+          }
+          
           node.material.needsUpdate = true
         } 
         // Handle material array
@@ -113,6 +120,13 @@ export const createColoredModel = (model, color) => {
           node.material = node.material.map(mat => {
             const newMat = mat.clone()
             newMat.color = new THREE.Color(materialColor)
+            
+            // Enhance white pieces with better material properties
+            if (color === 'white') {
+              newMat.roughness = 0.3;  // Lower roughness for more shine
+              newMat.metalness = 0.2;  // Slight metalness for better visibility
+            }
+            
             newMat.needsUpdate = true
             return newMat
           })

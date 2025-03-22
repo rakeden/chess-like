@@ -29,6 +29,7 @@ const ChessPiece = ({
   scale = 1, 
   entryDelay = 0,
   boardSize = 5,
+  isMovable = true,
   onMove,
   onRemove,
   onOutOfBoundsChange
@@ -115,6 +116,9 @@ const ChessPiece = ({
   // Handle drag gestures
   const bind = useGesture({
     onDragStart: (state) => {
+      // Skip dragging if piece is not movable
+      if (!isMovable) return
+      
       setIsDragging(true)
       
       // Store the base Y position (without lift)
@@ -138,6 +142,9 @@ const ChessPiece = ({
     },
     
     onDrag: ({ offset: [x, y] }) => {
+      // Skip dragging if piece is not movable
+      if (!isMovable || !isDragging) return
+      
       // Calculate the new position based on mouse movement
       const newX = dragStart.current.piecePos[0] + x / aspect
       const newZ = dragStart.current.piecePos[2] + y / aspect
@@ -168,6 +175,9 @@ const ChessPiece = ({
     },
     
     onDragEnd: () => {
+      // Skip if piece is not movable
+      if (!isMovable || !isDragging) return
+      
       // Get the current position
       const [newX, _, newZ] = currentPosition
       
@@ -246,8 +256,8 @@ const ChessPiece = ({
     },
     
     onHover: ({ hovering }) => {
-      // Only apply hover effects if not dragging
-      if (!isDragging) {
+      // Only apply hover effects if not dragging and piece is movable
+      if (!isDragging && isMovable) {
         const baseScale = 13 * getScaleFactor()
         const hoverScale = baseScale * 1.03 // 3% larger on hover
         
@@ -311,11 +321,24 @@ const ChessPiece = ({
           const originalColor = node.material.color.clone()
           materialsRef.current.set(node.uuid, originalColor)
         }
+        
+        // Add transparency to immovable pieces
+        if (!isMovable && node.material) {
+          if (!Array.isArray(node.material)) {
+            node.material.transparent = true
+            node.material.opacity = 0.5
+          } else {
+            node.material.forEach(mat => {
+              mat.transparent = true
+              mat.opacity = 0.5
+            })
+          }
+        }
       }
     })
     
     setProcessedScene(coloredModel)
-  }, [type, color])
+  }, [type, color, isMovable])
   
   // Update position from props
   useEffect(() => {
@@ -365,6 +388,45 @@ const ChessPiece = ({
       }, totalDelay)
     }
   }, [processedScene, initialPosition, api, getScaleFactor, entryDelay])
+  
+  // Apply transparency and visual effects when isMovable changes
+  useEffect(() => {
+    if (!processedScene) return
+    
+    processedScene.traverse((node) => {
+      if (node.isMesh && node.material) {
+        if (!Array.isArray(node.material)) {
+          // Apply transparency to immovable pieces
+          node.material.transparent = !isMovable || node.material.transparent
+          node.material.opacity = isMovable ? 1.0 : 0.7
+          
+          // Restore original color if piece is movable
+          if (isMovable && materialsRef.current.has(node.uuid)) {
+            const originalColor = materialsRef.current.get(node.uuid)
+            
+            // Add a slight highlight to movable pieces
+            const highlightedColor = originalColor.clone().lerp(new THREE.Color(1.0, 1.0, 1.0), 0.2)
+            node.material.color.copy(highlightedColor)
+          }
+          // Add a blue-gray tint to locked pieces
+          else if (!isMovable) {
+            const originalColor = materialsRef.current.get(node.uuid) || node.material.color.clone()
+            const tintedColor = originalColor.clone().lerp(new THREE.Color(0.6, 0.7, 0.9), 0.4)
+            node.material.color.copy(tintedColor)
+          }
+          
+          node.material.needsUpdate = true
+        } else {
+          node.material.forEach(mat => {
+            // Apply transparency to immovable pieces
+            mat.transparent = !isMovable || mat.transparent
+            mat.opacity = isMovable ? 1.0 : 0.7
+            mat.needsUpdate = true
+          })
+        }
+      }
+    })
+  }, [processedScene, isMovable])
   
   return (
     <>
